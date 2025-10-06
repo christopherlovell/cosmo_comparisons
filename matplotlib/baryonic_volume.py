@@ -33,7 +33,7 @@ width = 0.85
 ax = fig.add_axes((left, bottom, width, height))
 
 # set axes limits
-ax.set_xlim([10.5, 3.8])
+ax.set_xlim([9.8, 3.8])
 ax.set_ylim([3.0, 11.99])
 
 # set colour scale for redshift end-point
@@ -89,8 +89,13 @@ simulations['SPHINX'] = {'size': 20, 'm_g': 3.8E4,  'RT': True, 'complete': True
 # FLAMINGO
 simulations['FLAMINGO-L1_m8'] = {'size': 1000, 'm_g': 1.34E8,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
 simulations['FLAMINGO-L1_m9'] = {'size': 1000, 'm_g': 1.07E9,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
-simulations['FLAMINGO-L1_m10'] = {'size': 1000, 'm_g': 8.56E9,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+# simulations['FLAMINGO-L1_m10'] = {'size': 1000, 'm_g': 8.56E9,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
 simulations['FLAMINGO-L2p8_m9'] = {'size': 2800, 'm_g': 1.07E9,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+
+# Millennium-TNG
+simulations['MTNG740'] = {'size': 740, 'm_g': 2e7/0.6711,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+simulations['MTNG185'] = {'size': 185, 'm_g': 2e7/0.6711,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+
 
 # COLIBRE future runs
 simulations['COLIBRE-50'] = {'size': 50, 'm_g': 2.3e5,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
@@ -222,8 +227,8 @@ for i, (simulation_name, simulation) in enumerate(simulations.items()):
         j += 1
 
 # add labels for numbered simulations
-x_pos = 10.3
-y_start_pos = 7.2
+x_pos = 9.7
+y_start_pos = 7.3
 y_increment = 0.2
 
 for i, simulation in enumerate(labels):
@@ -315,10 +320,10 @@ if add_surveys:
 # )
 # ax.text(5, 10, 'target\nparameter\nspace', va='center', ha='center')
 
-ax.scatter([7.3], [9], marker='*', color='red', s=20)
+ax.scatter([6.3], [9], marker='*', color='red', s=20)
 ax.text(
-    7.3 - 0.1, 9,
-    rf'$\rm\bf FLAMELS$',
+    6.3 - 0.1, 9,
+    rf'$\rm\bf CARAVAN$',
     c='red',
     rotation=0,
     fontsize=10,
@@ -349,11 +354,24 @@ ax.text(
 )
 
 
+# add secondary x-axis at top for minimum resolved galaxy stellar mass (100x bottom axis)
+ax2 = ax.twiny()
+ax2.set_xlim(ax.get_xlim())
+ax2.set_xlabel(r'$\rm\log_{10}(minimum\ resolved\ galaxy\ stellar\ mass/M_{\odot})$')
+
+# Set ticks on top axis to correspond to 100x the bottom axis values
+# Create appropriate tick locations within the x-limits (10.5 to 3.8)
+xlim = ax.get_xlim()
+# Create ticks at integer values within the range
+tick_positions = [tick for tick in range(int(xlim[1]), int(xlim[0])+1) if xlim[1] <= tick <= xlim[0]]
+ax2.set_xticks(tick_positions)
+ax2.set_xticklabels([f'{int(tick+2)}' for tick in tick_positions])
+
 # add axes labels
 ax.set_xlabel(r'$\rm\log_{10}(baryonic\ resolution\ element\ mass/M_{\odot})$')
 ax.set_ylabel(r'$\rm\log_{10}(volume/cMpc^{3})$')
 
 noflares='' # '_noflares'  # ''
-fig.savefig(f'figs/baryonic_volume{noflares}.pdf', bbox_inches='tight')
-fig.savefig(f'figs/baryonic_volume{noflares}.png', bbox_inches='tight')
+fig.savefig(f'plots/baryonic_volume{noflares}.pdf', bbox_inches='tight')
+fig.savefig(f'plots/baryonic_volume{noflares}.png', bbox_inches='tight')
 fig.clf()
