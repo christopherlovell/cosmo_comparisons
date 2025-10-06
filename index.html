@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmological Simulations Viewer</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Cosmological Simulations Explorer</h1>
+            <p class="subtitle">Interactive visualization of simulation resolution and volume</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="control-section">
+                    <h3>Y-Axis Units</h3>
+                    <div class="radio-group">
+                        <label class="radio-item">
+                            <input type="radio" name="yaxis" value="volume" checked>
+                            <span>Volume (cMpc³)</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="yaxis" value="area">
+                            <span>Area (arcmin²)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-section" id="redshift-controls" style="display: none;">
+                    <h3>Redshift Parameters</h3>
+                    <div style="margin-bottom: 12px;">
+                        <label style="font-size: 12px; display: block; margin-bottom: 4px;">
+                            Central Redshift (z): <span id="z-value">7.0</span>
+                        </label>
+                        <input type="range" id="z-slider" min="0" max="15" step="0.5" value="7" 
+                               style="width: 100%; cursor: pointer;">
+                    </div>
+                    <div>
+                        <label style="font-size: 12px; display: block; margin-bottom: 4px;">
+                            Redshift Range (Δz): <span id="dz-value">1.0</span>
+                        </label>
+                        <input type="range" id="dz-slider" min="0.1" max="5" step="0.1" value="1" 
+                               style="width: 100%; cursor: pointer;">
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Simulation Types</h3>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="sim-type" value="large-volume" checked>
+                            <span>Large Volume</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="sim-type" value="radiative-transfer" checked>
+                            <span>Radiative Transfer</span>
+                        </label>
+                        <label class="checkbox-item">
+                            <input type="checkbox" class="sim-type" value="zoom" checked>
+                            <span>Zoom Simulations</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Survey References</h3>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item">
+                            <input type="checkbox" id="show-surveys" checked>
+                            <span>Show Survey Lines</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="control-section">
+                    <h3>Specific Simulations</h3>
+                    <div class="checkbox-group" id="sim-checkboxes">
+                        <!-- Will be populated dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <svg id="chart"></svg>
+                <div class="tooltip"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
