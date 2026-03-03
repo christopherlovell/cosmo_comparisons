@@ -5,9 +5,9 @@ const simulationSuites = {
         'EAGLE-Recal': {size: 25, m_g: 2.26e5, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.446..521S'}
     },
     'IllustrisTNG': {
-        'TNG50': {size: 51.7, m_g: 8.5e4, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2019},
-        'TNG100': {size: 110.7, m_g: 1.4e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2018},
-        'TNG300': {size: 302.6, m_g: 1.1e7, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2018}
+        'TNG50': {size: 51.7, m_g: 8.5e4, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, mhd: true, year: 2019},
+        'TNG100': {size: 110.7, m_g: 1.4e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, mhd: true, year: 2018},
+        'TNG300': {size: 302.6, m_g: 1.1e7, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, mhd: true, year: 2018}
     },
     'Illustris': {
         // Original Illustris (pre-TNG); box is 75 h^-1 Mpc with h=0.704
@@ -43,8 +43,14 @@ const simulationSuites = {
         'MassiveBlack-II': {size: 100/0.704, m_g: 2.2e6/0.704, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.450.1349K'}
     },
     'Magneticum': {
-        // Box2/hr run; h=0.704 (WMAP7)
-        'Magneticum-Box2hr': {size: 352/0.704, m_g: 1.4e8/0.704, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.451.4277D'}
+        // Magneticum Pathfinder suite; box sizes in h^-1 Mpc (h=0.704, WMAP7); masses in M_sun
+        'Magneticum-Box0':   {size: 2688/0.704, m_g: 1.7e9,  'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.451.4277D'},
+        'Magneticum-Box1':   {size: 896/0.704,  m_g: 1.7e9,  'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.451.4277D'},
+        'Magneticum-Box2b':  {size: 640/0.704,  m_g: 2.0e8,  'radiative-transfer': false, complete: true, redshift_end: 0.2, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.451.4277D'},
+        'Magneticum-Box2hr': {size: 352/0.704,  m_g: 2.0e8,  'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.451.4277D'},
+        'Magneticum-Box3':   {size: 128/0.704,  m_g: 1.0e7,  'radiative-transfer': false, complete: true, redshift_end: 1.7, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.451.4277D'},
+        'Magneticum-Box4':   {size: 48/0.704,   m_g: 1.0e7,  'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.451.4277D'},
+        'Magneticum-Box5':   {size: 18/0.704,   m_g: 2.0e6,  'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.451.4277D'}
     },
     'CAMELS': {
         'CAMELS-1': {size: 25/0.7, m_g: 2e7, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, suite: true, year: 2021},
@@ -54,7 +60,31 @@ const simulationSuites = {
         'Horizon-AGN': {size: 120, m_g: 4e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2014, ads: 'https://ui.adsabs.harvard.edu/abs/2014MNRAS.444.1453D'},
         'BAHAMAS': {size: 560, m_g: 1.5e9, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2017},
         'SPHINX': {size: 20, m_g: 3.8e4, 'radiative-transfer': true, complete: true, redshift_end: 4.6, periodic: true, year: 2018},
-        'FLARES': {size: 14.28, m_g: 1.81e6, 'radiative-transfer': false, complete: true, redshift_end: 5.0, periodic: false, highlight: 'green', star: true, year: 2021}
+        'FLARES': {size: 14.28, m_g: 1.81e6, 'radiative-transfer': false, complete: true, redshift_end: 5.0, periodic: false, highlight: 'green', star: true, year: 2021},
+        'FRONTIER-E': {size: 4700, m_g: 1e8, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2025, ads: 'https://arxiv.org/abs/2510.03557'}
+    },
+    'FIREbox': {
+        // Feldmann et al. (2023); FIRE-2 cosmological periodic volume; h=0.677 (Planck 2015)
+        'FB1024': {size: 22.1, m_g: 6.26e4, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023, ads: 'https://ui.adsabs.harvard.edu/abs/2023MNRAS.522.3831F'},
+        'FB512':  {size: 22.1, m_g: 5.01e5, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023, ads: 'https://ui.adsabs.harvard.edu/abs/2023MNRAS.522.3831F'},
+        'FB256':  {size: 22.1, m_g: 4.01e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023, ads: 'https://ui.adsabs.harvard.edu/abs/2023MNRAS.522.3831F'}
+    },
+    'OWLS': {
+        // Schaye et al. (2010); box sizes in h^-1 Mpc and masses in h^-1 M_sun (h=0.73, WMAP3)
+        'OWLS-L100': {size: 100/0.73, m_g: 8.66e7/0.73, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2010, ads: 'https://ui.adsabs.harvard.edu/abs/2010MNRAS.402.1536S'},
+        'OWLS-L25':  {size: 25/0.73,  m_g: 1.35e6/0.73, 'radiative-transfer': false, complete: true, redshift_end: 2.0, periodic: true, year: 2010, ads: 'https://ui.adsabs.harvard.edu/abs/2010MNRAS.402.1536S'}
+    },
+    'Romulus': {
+        // Tremmel et al. (2017); masses in M_sun
+        'Romulus25': {size: 25, m_g: 2.12e5, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2017, ads: 'https://ui.adsabs.harvard.edu/abs/2017MNRAS.470.1121T'},
+        'Romulus50': {size: 50, m_g: 2.12e5, 'radiative-transfer': false, complete: true, redshift_end: 2.0, periodic: true, year: 2017, ads: 'https://ui.adsabs.harvard.edu/abs/2017MNRAS.470.1121T'},
+        'Romulus8':  {size: 8,  m_g: 2.12e5, 'radiative-transfer': false, complete: true, redshift_end: 0.5, periodic: true, year: 2017, ads: 'https://ui.adsabs.harvard.edu/abs/2017MNRAS.470.1121T'}
+    },
+    'SLOW': {
+        // Dolag et al.; constrained simulation of local Universe; box = 500 h^-1 Mpc (h=0.6777, Planck)
+        // Gas particle masses from Table 1 of respective papers (in h^-1 M_sun, converted to M_sun)
+        'SLOW-AGN1536': {size: 500/0.6777, m_g: 4.6e8/0.6777, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023, ads: 'https://arxiv.org/abs/2302.10960'},
+        'SLOW-AGN3072': {size: 500/0.6777, m_g: 5.5e7/0.6777, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2024, ads: 'https://arxiv.org/abs/2402.01834'}
     },
     'Historical': {
         // Pre-2010 periodic hydrodynamical simulations.
@@ -86,6 +116,25 @@ const simulationSuites = {
         'Quijote-512':  {size: 1000/0.6711, m_dm: 2.775e11 * 0.3175 * 1e9 / Math.pow(512,  3) / 0.6711, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, dmo: true, suite: true, year: 2020},
         'Quijote-1024': {size: 1000/0.6711, m_dm: 2.775e11 * 0.3175 * 1e9 / Math.pow(1024, 3) / 0.6711, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, dmo: true, suite: true, year: 2020}
     }
+};
+
+// Optional emoji per suite. Value is a Unicode emoji string, or a PNG filename
+// loaded from the emoji/ folder (e.g. 'colibre.png'). Omit a suite to use default markers.
+const suiteEmoji = {
+    'EAGLE':         '🦅',
+    'IllustrisTNG':  'picard.png',
+    'Illustris':     '🎆',
+    'Simba':         '🦁',
+    'FLAMINGO':      '🦩',
+    'MillenniumTNG': '🎆',
+    'COLIBRE':       '🐦',
+    'MassiveBlack':  '🖤',
+    'Magneticum':    '🧲',
+    'CAMELS':        '🐪',
+    'FIREbox':       '🔥',
+    'OWLS':          '🦉',
+    'SLOW':          '🐌',
+    'Quijote':       '🏇',
 };
 
 // Flatten simulations for backward compatibility

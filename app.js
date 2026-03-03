@@ -67,7 +67,7 @@ function areaToVolume(area_arcmin2, z_center, delta_z) {
 }
 
 // Chart dimensions — width/height are set dynamically by resizeChart()
-const margin = {top: 40, right: 140, bottom: 60, left: 70};
+const margin = {top: 55, right: 140, bottom: 60, left: 70};
 let width, height;
 
 const svg = d3.select('#chart');
@@ -90,17 +90,12 @@ const xAxisG = g.append('g').attr('class', 'axis');
 const yAxisG = g.append('g').attr('class', 'axis');
 const yAxisRightG = g.append('g').attr('class', 'axis');
 
-// Grid groups (content set in resizeChart)
-const xGridG = g.append('g').attr('class', 'grid x-grid');
-const yGridG = g.append('g').attr('class', 'grid y-grid');
-let yGrid;
-
 // Axis labels (positions set in resizeChart)
 const xLabel = g.append('text')
     .attr('class', 'chart-label')
     .attr('text-anchor', 'middle')
     .style('font-size', '17px')
-    .html('log<tspan baseline-shift="sub" font-size="13px">10</tspan>(baryonic / dark matter resolution element mass/M<tspan baseline-shift="sub" font-size="13px">☉</tspan>)');
+    .html('log<tspan dy="5" font-size="11px">10</tspan><tspan dy="-5">(baryonic / dark matter resolution element mass / </tspan><tspan font-style="italic">M</tspan><tspan dy="5" font-size="11px">⊙</tspan><tspan dy="-5">)</tspan>');
 
 const yLabel = g.append('text')
     .attr('class', 'chart-label')
@@ -108,7 +103,7 @@ const yLabel = g.append('text')
     .attr('y', -50)
     .attr('text-anchor', 'middle')
     .style('font-size', '17px')
-    .html('log<tspan baseline-shift="sub" font-size="13px">10</tspan>(volume/cMpc<tspan baseline-shift="super" font-size="13px">3</tspan>)');
+    .html('log<tspan dy="5" font-size="11px">10</tspan><tspan dy="-5">(volume / cMpc</tspan><tspan dy="-6" font-size="11px">3</tspan><tspan dy="6">)</tspan>');
 
 // Top axis for stellar mass (range set in resizeChart)
 const xScaleTop = d3.scaleLinear()
@@ -119,10 +114,13 @@ const xAxisTopG = g.append('g').attr('class', 'axis');
 
 const topLabel = g.append('text')
     .attr('class', 'chart-label')
-    .attr('y', -25)
+    .attr('y', -35)
     .attr('text-anchor', 'middle')
     .style('font-size', '17px')
-    .html('log<tspan baseline-shift="sub" font-size="13px">10</tspan>(minimum resolved galaxy stellar mass/M<tspan baseline-shift="sub" font-size="13px">☉</tspan>)');
+    .html('log<tspan dy="5" font-size="11px">10</tspan><tspan dy="-5">(minimum resolved galaxy stellar mass / </tspan><tspan font-style="italic">M</tspan><tspan dy="5" font-size="11px">⊙</tspan><tspan dy="-5">)</tspan>');
+
+// Particle number lines group (rendered first, behind everything)
+const particleGroup = g.append('g').attr('class', 'particle-lines');
 
 // Survey lines group
 const surveyGroup = g.append('g').attr('class', 'surveys');
@@ -135,6 +133,12 @@ const legendGroup = g.append('g').attr('class', 'legend');
 
 // Icon key group
 const iconKeyGroup = g.append('g').attr('class', 'icon-key-group');
+
+// Animated year display (top-right of plot, shown only during timeline playback)
+const yearDisplayText = g.append('text')
+    .attr('class', 'year-display')
+    .attr('text-anchor', 'end')
+    .style('opacity', 0);
 
 // Populate suite checkboxes
 const suiteCheckboxContainer = d3.select('#suite-checkboxes');
@@ -180,6 +184,17 @@ Object.entries(simulationSuites).forEach(([suiteName, sims]) => {
     });
 });
 
+// Reverse mapping: sim name → suite name, for emoji lookup
+const simToSuite = {};
+Object.entries(simulationSuites).forEach(([suiteName, sims]) => {
+    Object.keys(sims).forEach(simName => { simToSuite[simName] = suiteName; });
+});
+
+function getSimEmoji(simName) {
+    const suite = simToSuite[simName];
+    return suite ? (suiteEmoji[suite] || null) : null;
+}
+
 const YEAR_MIN = 1990;
 const YEAR_MAX = new Date().getFullYear();
 
@@ -191,6 +206,38 @@ let currentMinYear = YEAR_MIN;
 let currentMaxYear = YEAR_MAX;
 let animationId = null;
 let isAnimating = false;
+let stickyData = null;
+
+function buildTooltipHTML(d, includeLink) {
+    const [name, sim] = d;
+    const volume = Math.pow(sim.size, 3);
+    let html = `<strong>${name}</strong><br>`;
+    html += `Type: ${sim.dmo ? 'Dark Matter Only' : 'Hydrodynamic'}<br>`;
+    const massLabel = sim.dmo ? 'DM particle mass' : 'Baryonic mass';
+    html += `${massLabel}: ${getResolutionMass(sim).toExponential(2)} M☉<br>`;
+    html += `Box size: ${sim.size.toFixed(1)} cMpc<br>`;
+    html += `Volume: ${volume.toExponential(2)} cMpc³<br>`;
+    if (sim.mhd) html += `MHD: Yes<br>`;
+    if (sim['radiative-transfer']) html += `Radiative Transfer: Yes<br>`;
+    html += `Redshift end: z=${sim.redshift_end}<br>`;
+    if (sim.year !== undefined) html += `Published: ${sim.year}`;
+    if (includeLink && sim.ads) html += `<br><a href="${sim.ads}" target="_blank" class="tooltip-link">View paper ↗</a>`;
+    return html;
+}
+
+function positionTooltip(event) {
+    const chartContainer = document.querySelector('.chart-container');
+    const containerRect = chartContainer.getBoundingClientRect();
+    const tooltipNode = tooltip.node();
+    const tooltipWidth = tooltipNode.offsetWidth;
+    const tooltipHeight = tooltipNode.offsetHeight;
+    let left = event.pageX - containerRect.left - window.scrollX + 12;
+    let top = event.pageY - containerRect.top - window.scrollY - tooltipHeight / 2;
+    if (left + tooltipWidth > chartContainer.offsetWidth) {
+        left = event.pageX - containerRect.left - window.scrollX - tooltipWidth - 12;
+    }
+    tooltip.style('left', left + 'px').style('top', top + 'px');
+}
 
 function updateYAxis(mode) {
     currentYMode = mode;
@@ -205,7 +252,7 @@ function updateYAxis(mode) {
     
     if (mode === 'volume') {
         yScale.domain([3.0, 12]);
-        yLabel.html('log<tspan baseline-shift="sub" font-size="13px">10</tspan>(volume/cMpc<tspan baseline-shift="super" font-size="13px">3</tspan>)');
+        yLabel.html('log<tspan dy="5" font-size="11px">10</tspan><tspan dy="-5">(volume / cMpc</tspan><tspan dy="-6" font-size="11px">3</tspan><tspan dy="6">)</tspan>');
     } else {
         // Calculate y-values for all simulations to determine range
         const yValues = Object.values(simulations).map(sim => {
@@ -219,21 +266,16 @@ function updateYAxis(mode) {
         const padding = (maxY - minY) * 0.1; // 10% padding
         
         yScale.domain([minY - padding, maxY + padding]);
-        yLabel.html(`log<tspan baseline-shift="sub" font-size="13px">10</tspan>(area/arcmin<tspan baseline-shift="super" font-size="13px">2</tspan>) @ z=${currentRedshift.toFixed(1)} (Δz=${currentDeltaZ.toFixed(1)})`);
+        yLabel.html(`log<tspan dy="5" font-size="11px">10</tspan><tspan dy="-5">(area / arcmin</tspan><tspan dy="-6" font-size="11px">2</tspan><tspan dy="6">) @ z=${currentRedshift.toFixed(1)} (Δz=${currentDeltaZ.toFixed(1)})</tspan>`);
     }
     
     yAxisG.transition().duration(500).call(yAxis);
-    
-    // Redraw the y-grid with updated scale
-    yGrid = d3.axisLeft(yScale).tickSize(-width).tickFormat('').ticks(10);
-    yGridG.transition().duration(500).call(yGrid);
-    
     render();
 }
 
 function updateRedshiftParams() {
     if (currentYMode === 'area') {
-        yLabel.html(`log<tspan baseline-shift="sub" font-size="13px">10</tspan>(area/arcmin<tspan baseline-shift="super" font-size="13px">2</tspan>) @ z=${currentRedshift.toFixed(1)} (Δz=${currentDeltaZ.toFixed(1)})`);
+        yLabel.html(`log<tspan dy="5" font-size="11px">10</tspan><tspan dy="-5">(area / arcmin</tspan><tspan dy="-6" font-size="11px">2</tspan><tspan dy="6">) @ z=${currentRedshift.toFixed(1)} (Δz=${currentDeltaZ.toFixed(1)})</tspan>`);
         
         // Recalculate y-axis limits
         const yValues = Object.values(simulations).map(sim => {
@@ -248,11 +290,6 @@ function updateRedshiftParams() {
         
         yScale.domain([minY - padding, maxY + padding]);
         yAxisG.transition().duration(500).call(yAxis);
-        
-        // Redraw the y-grid
-        yGrid = d3.axisLeft(yScale).tickSize(-width).tickFormat('').ticks(10);
-        yGridG.transition().duration(500).call(yGrid);
-        
         render();
     }
 }
@@ -274,12 +311,61 @@ function defaultSimColor() {
         : '#333333';
 }
 
+// Planck 2018: H0 = 67.66 km/s/Mpc, Ωm = 0.3111
+// ρ_crit = 2.775e11 h² M_☉/Mpc³  →  ρ_m = Ωm × ρ_crit
+const LOG_RHO_M = Math.log10(2.775e11 * Math.pow(67.66 / 100, 2) * 0.3111);
+
+function renderParticleLines() {
+    particleGroup.selectAll('*').remove();
+    if (currentYMode !== 'volume') return;
+
+    const [yMin, yMax] = yScale.domain();
+    const xMin = 3.8;   // right edge of plot (low mass)
+    const xMax = 12.2;  // left  edge of plot (high mass)
+
+    for (let logN = 6; logN <= 13; logN++) {
+        const c = logN - LOG_RHO_M; // log10(V) = log10(m) + c
+
+        // Clip line to plot boundaries
+        const pts = [];
+        const y_left   = xMax + c; if (y_left  >= yMin && y_left  <= yMax) pts.push([xMax, y_left]);
+        const y_right  = xMin + c; if (y_right >= yMin && y_right <= yMax) pts.push([xMin, y_right]);
+        const x_bottom = yMin - c; if (x_bottom > xMin && x_bottom < xMax) pts.push([x_bottom, yMin]);
+        const x_top    = yMax - c; if (x_top    > xMin && x_top    < xMax) pts.push([x_top,    yMax]);
+        if (pts.length < 2) continue;
+
+        pts.sort((a, b) => a[0] - b[0]);
+
+        particleGroup.append('line')
+            .attr('class', 'particle-line')
+            .attr('x1', xScale(pts[0][0])).attr('y1', yScale(pts[0][1]))
+            .attr('x2', xScale(pts[1][0])).attr('y2', yScale(pts[1][1]));
+
+        // Label at the upper end (highest x in data = left side of SVG)
+        const labelPt = pts[1];
+        const atLeftEdge = Math.abs(labelPt[0] - xMax) < 0.05;
+        const lx = xScale(labelPt[0]);
+        const ly = yScale(labelPt[1]);
+
+        const label = particleGroup.append('text').attr('class', 'particle-label');
+        if (atLeftEdge) {
+            label.attr('x', lx + 5).attr('y', ly + 4).attr('text-anchor', 'start');
+        } else {
+            // exits through top edge — label just below
+            label.attr('x', lx).attr('y', ly + 11).attr('text-anchor', 'middle');
+        }
+        label.append('tspan').text('10');
+        label.append('tspan').attr('baseline-shift', 'super').attr('font-size', '8px').text(logN);
+    }
+}
+
 function render() {
     const filterPeriodic = document.getElementById('filter-periodic').checked;
     const filterZoom = document.getElementById('filter-zoom').checked;
     const filterRT = document.getElementById('filter-rt').checked;
     const filterHydro = document.getElementById('filter-hydro').checked;
     const filterDMO = document.getElementById('filter-dmo').checked;
+    const filterMHD = document.getElementById('filter-mhd').checked;
 
     const selectedSims = Array.from(document.querySelectorAll('.individual-sim:checked'))
         .map(cb => cb.value);
@@ -287,6 +373,10 @@ function render() {
     const showSurveys = document.getElementById('show-surveys').checked;
     const showLegend = document.getElementById('show-legend').checked;
     const showIconKey = document.getElementById('show-icon-key').checked;
+    const showEmojis = document.getElementById('show-emojis').checked;
+
+    const emojiActive = d => showEmojis && !!getSimEmoji(d[0]);
+    const isPng = e => e && e.endsWith('.png');
 
     // Filter simulations
     const filteredSims = Object.entries(simulations).filter(([name, sim]) => {
@@ -305,6 +395,7 @@ function render() {
         // Check hydro / DMO filters
         if (!filterHydro && !sim.dmo) return false;
         if (!filterDMO && sim.dmo) return false;
+        if (!filterMHD && sim.mhd) return false;
 
         // Check final redshift filter
         if (sim.redshift_end > currentMaxRedshiftEnd) return false;
@@ -316,11 +407,20 @@ function render() {
         return selectedSims.includes(name);
     });
 
+    // If the sticky point was filtered out, clear it
+    if (stickyData && !filteredSims.some(([name]) => name === stickyData[0])) {
+        stickyData = null;
+        tooltip.classed('visible', false).classed('sticky', false).style('pointer-events', 'none');
+    }
+
     // Create simulation number mapping for legend
     const simNumberMap = new Map();
     filteredSims.forEach(([name], index) => {
         simNumberMap.set(name, index + 1);
     });
+
+    // Render particle number lines
+    renderParticleLines();
 
     // Render surveys
     surveyGroup.selectAll('*').remove();
@@ -377,6 +477,9 @@ function render() {
         .attr('class', 'suite-ring')
         .attr('r', 9);
 
+    pointsEnter.append('path')
+        .attr('class', 'mhd-field');
+
     pointsEnter.append('circle')
         .attr('class', 'main-circle')
         .attr('r', 5);
@@ -394,6 +497,16 @@ function render() {
         .attr('y', -8)
         .attr('width', 16)
         .attr('height', 16);
+
+    pointsEnter.append('text')
+        .attr('class', 'emoji-text')
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'central');
+
+    pointsEnter.append('image')
+        .attr('class', 'emoji-image')
+        .attr('x', -10).attr('y', -10)
+        .attr('width', 20).attr('height', 20);
 
     pointsEnter.append('text')
         .attr('class', 'point-label')
@@ -426,13 +539,18 @@ function render() {
 
     const allPoints = pointsEnter.merge(points);
 
+    allPoints.select('.mhd-field')
+        .attr('d', d => d[1].mhd ? 'M 0,-5 C -9,-15 -9,15 0,5 M 0,-5 C 9,-15 9,15 0,5' : '')
+        .attr('stroke', d => d[1].dmo ? 'purple' : (d[1].highlight || defaultSimColor()))
+        .attr('opacity', d => emojiActive(d) ? 0 : (d[1].mhd ? (d[1].complete ? 1 : 0.3) : 0));
+
     allPoints.select('.suite-ring')
         .attr('stroke', d => d[1].dmo ? 'purple' : (d[1].highlight || defaultSimColor()))
-        .attr('opacity', d => d[1].suite ? (d[1].complete ? 1 : 0.3) : 0);
+        .attr('opacity', d => emojiActive(d) ? 0 : (d[1].suite ? (d[1].complete ? 1 : 0.3) : 0));
 
     allPoints.select('.main-circle')
         .attr('fill', d => d[1].dmo ? 'purple' : (d[1].highlight || defaultSimColor()))
-        .attr('opacity', d => d[1].complete ? 1 : 0.3);
+        .attr('opacity', d => emojiActive(d) ? 0 : (d[1].complete ? 1 : 0.3));
 
     allPoints.select('.rt-ring')
         .attr('opacity', 0);
@@ -443,58 +561,65 @@ function render() {
             return d3.symbol().type(d3.symbolStar).size(150)();
         })
         .attr('stroke', d => d[1].highlight || defaultSimColor())
-        .attr('opacity', d => d[1]['radiative-transfer'] ? 1 : 0);
+        .attr('opacity', d => emojiActive(d) ? 0 : (d[1]['radiative-transfer'] ? 1 : 0));
 
     allPoints.select('.zoom-box')
         .attr('fill', 'none')
         .attr('stroke', d => d[1].highlight || defaultSimColor())
         .attr('stroke-width', 1.5)
-        .attr('opacity', d => (!d[1].periodic ? 1 : 0) * (d[1].complete ? 1 : 0.3));
+        .attr('opacity', d => emojiActive(d) ? 0 : (!d[1].periodic ? 1 : 0) * (d[1].complete ? 1 : 0.3));
+
+    allPoints.select('.emoji-text')
+        .text(d => {
+            const e = getSimEmoji(d[0]);
+            return (showEmojis && e && !isPng(e)) ? e : '';
+        })
+        .attr('opacity', d => {
+            const e = getSimEmoji(d[0]);
+            return (showEmojis && e && !isPng(e)) ? 1 : 0;
+        });
+
+    allPoints.select('.emoji-image')
+        .attr('href', d => {
+            const e = getSimEmoji(d[0]);
+            return (showEmojis && e && isPng(e)) ? `emoji/${e}` : null;
+        })
+        .attr('opacity', d => {
+            const e = getSimEmoji(d[0]);
+            return (showEmojis && e && isPng(e)) ? 1 : 0;
+        });
 
     allPoints.select('.point-label')
         .text(d => showLegend ? simNumberMap.get(d[0]) : '')
         .attr('opacity', showLegend ? 1 : 0);
 
     allPoints.on('mouseover', function(event, d) {
-        const [name, sim] = d;
-        const volume = Math.pow(sim.size, 3);
-        
-        let details = `<strong>${name}</strong><br>`;
-        details += `Type: ${sim.dmo ? 'Dark Matter Only' : 'Hydrodynamic'}<br>`;
-        const massLabel = sim.dmo ? 'DM particle mass' : 'Baryonic mass';
-        details += `${massLabel}: ${getResolutionMass(sim).toExponential(2)} M☉<br>`;
-        details += `Box size: ${sim.size.toFixed(1)} cMpc<br>`;
-        details += `Volume: ${volume.toExponential(2)} cMpc³<br>`;
-        if (sim['radiative-transfer']) details += `Radiative Transfer: Yes<br>`;
-        details += `Redshift end: z=${sim.redshift_end}<br>`;
-        if (sim.year !== undefined) details += `Published: ${sim.year}`;
-        
-        // Get the position of the chart container
-        const chartContainer = document.querySelector('.chart-container');
-        const containerRect = chartContainer.getBoundingClientRect();
-        
-        tooltip.html(details)
-            .classed('visible', true);
-        
-        // Position relative to the chart container
-        const tooltipNode = tooltip.node();
-        const tooltipWidth = tooltipNode.offsetWidth;
-        const tooltipHeight = tooltipNode.offsetHeight;
-        
-        // Calculate position relative to the event, offset slightly
-        let left = event.pageX - containerRect.left - window.scrollX + 12;
-        let top = event.pageY - containerRect.top - window.scrollY - tooltipHeight / 2;
-        
-        // Keep tooltip within bounds
-        if (left + tooltipWidth > chartContainer.offsetWidth) {
-            left = event.pageX - containerRect.left - window.scrollX - tooltipWidth - 12;
-        }
-        
-        tooltip.style('left', left + 'px')
-            .style('top', top + 'px');
+        if (stickyData) return;
+        tooltip.html(buildTooltipHTML(d, false))
+            .classed('visible', true)
+            .style('pointer-events', 'none');
+        positionTooltip(event);
     })
     .on('mouseout', function() {
+        if (stickyData) return;
         tooltip.classed('visible', false);
+    })
+    .on('click', function(event, d) {
+        event.stopPropagation();
+        if (stickyData && stickyData[0] === d[0]) {
+            // Click same point — unstick
+            stickyData = null;
+            tooltip.classed('visible', false).classed('sticky', false)
+                .style('pointer-events', 'none');
+        } else {
+            // Stick to this point (switch if another was already sticky)
+            stickyData = d;
+            tooltip.html(buildTooltipHTML(d, true))
+                .classed('visible', true)
+                .classed('sticky', true)
+                .style('pointer-events', 'auto');
+            positionTooltip(event);
+        }
     });
 
     // Render legend
@@ -536,13 +661,13 @@ function render() {
 
     if (showIconKey) {
         const keyX = 10;
-        const keyY = height - 230;
+        const keyY = height - 260;
 
         const keyBox = iconKeyGroup.append('foreignObject')
             .attr('x', keyX)
             .attr('y', keyY)
             .attr('width', 180)
-            .attr('height', 220);
+            .attr('height', 250);
 
         const keyDiv = keyBox.append('xhtml:div')
             .attr('class', 'icon-key');
@@ -681,6 +806,31 @@ function render() {
         zoomItem.append('span')
             .attr('class', 'icon-key-label')
             .text('Zoom Simulation');
+
+        // MHD (dot with dipole field lines)
+        const mhdItem = keyDiv.append('div')
+            .attr('class', 'icon-key-item');
+
+        const mhdSvg = mhdItem.append('svg')
+            .attr('width', 20)
+            .attr('height', 20)
+            .attr('overflow', 'visible');
+
+        mhdSvg.append('path')
+            .attr('d', 'M 10,5 C 3,-5 3,25 10,15 M 10,5 C 17,-5 17,25 10,15')
+            .attr('fill', 'none')
+            .attr('class', 'icon-key-stroke')
+            .attr('stroke-width', 1.5);
+
+        mhdSvg.append('circle')
+            .attr('cx', 10)
+            .attr('cy', 10)
+            .attr('r', 5)
+            .attr('class', 'icon-key-fill');
+
+        mhdItem.append('span')
+            .attr('class', 'icon-key-label')
+            .text('MHD');
     }
 }
 
@@ -823,9 +973,11 @@ function startAnimation() {
         render();
     }
     document.getElementById('year-play').textContent = '⏸';
+    yearDisplayText.text(currentMaxYear).style('opacity', 0.15);
 
     function step() {
         currentMaxYear = Math.min(currentMaxYear + 1, YEAR_MAX);
+        yearDisplayText.text(currentMaxYear);
         updateYearUI();
         render();
         if (currentMaxYear >= YEAR_MAX) {
@@ -850,6 +1002,7 @@ function resetAnimation() {
     isAnimating = false;
     currentMinYear = YEAR_MIN;
     currentMaxYear = YEAR_MAX;
+    yearDisplayText.style('opacity', 0);
     updateYearUI();
     render();
 }
@@ -864,9 +1017,21 @@ document.getElementById('year-play').addEventListener('click', () => {
 
 document.getElementById('year-stop').addEventListener('click', resetAnimation);
 
-document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #filter-periodic, #filter-zoom, #filter-rt, #filter-hydro, #filter-dmo').forEach(cb => {
+document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #show-emojis, #filter-periodic, #filter-zoom, #filter-rt, #filter-hydro, #filter-dmo, #filter-mhd').forEach(cb => {
     cb.addEventListener('change', render);
 });
+
+// Dismiss sticky tooltip when clicking chart background
+document.querySelector('.chart-container').addEventListener('click', () => {
+    if (stickyData) {
+        stickyData = null;
+        tooltip.classed('visible', false).classed('sticky', false)
+            .style('pointer-events', 'none');
+    }
+});
+
+// Prevent clicks inside the tooltip (e.g. on a link) from dismissing it
+tooltip.on('click', event => event.stopPropagation());
 
 document.getElementById('dark-chart').addEventListener('change', (e) => {
     document.querySelector('.chart-container').classList.toggle('dark', !e.target.checked);
@@ -949,14 +1114,10 @@ function resizeChart() {
     yAxisRightG.attr('transform', `translate(${width},0)`)
                .call(d3.axisRight(yScale).tickValues([]));
 
-    xGridG.attr('transform', `translate(0,${height})`)
-          .call(d3.axisBottom(xScale).tickSize(-height).tickFormat('').ticks(8));
-    yGrid = d3.axisLeft(yScale).tickSize(-width).tickFormat('').ticks(10);
-    yGridG.call(yGrid);
-
-    xLabel.attr('x', width / 2).attr('y', height + 45);
+    xLabel.attr('x', width / 2).attr('y', height + 55);
     yLabel.attr('x', -height / 2);
     topLabel.attr('x', width / 2);
+    yearDisplayText.attr('x', width - 8).attr('y', 80);
 
     render();
 }

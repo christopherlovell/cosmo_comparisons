@@ -27,6 +27,17 @@
             <div class="sidebar">
                 <div class="sidebar-inner">
                 <div class="control-section">
+                    <h3 class="section-header" data-section="about">
+                        <span class="toggle-icon collapsed">▼</span>
+                        About
+                    </h3>
+                    <div class="section-content collapsed" id="about-content">
+			    Cosmo Comparisons in an interactive viewer 
+                    :wq
+		</div>
+                </div>
+
+                <div class="control-section">
                     <h3 class="section-header" data-section="yaxis">
                         <span class="toggle-icon collapsed">▼</span>
                         Y-Axis Units
@@ -93,6 +104,10 @@
                                 <input type="checkbox" id="filter-dmo" checked>
                                 <span>Dark Matter Only</span>
                             </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="filter-mhd" checked>
+                                <span>MHD</span>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -153,6 +168,10 @@
                             <label class="checkbox-item">
                                 <input type="checkbox" id="show-icon-key" checked>
                                 <span>Show Icon Key</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="show-emojis">
+                                <span>Show Suite Emojis</span>
                             </label>
                             <label class="checkbox-item">
                                 <input type="checkbox" id="dark-chart">
