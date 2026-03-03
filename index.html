@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cosmological Simulations Viewer</title>
+    <title>Cosmo Carta</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="styles.css">
@@ -14,14 +14,17 @@
         <div class="main-content">
             <div class="sidebar">
                 <div class="sidebar-inner">
-                <div class="sidebar-title">Cosmo Comparisons</div>
+                <div class="sidebar-title">Cosmo Carta</div>
                 <div class="control-section">
                     <h3 class="section-header" data-section="about">
                         <span class="toggle-icon collapsed">▼</span>
                         About
                     </h3>
                     <div class="section-content collapsed" id="about-content">
-                        An interactive viewer of numerical cosmological simulations on the volume-resolution plane.
+			    <p>An interactive viewer for numerical cosmological simulations on the volume-resolution plane.</p>
+			    <p>Hover / click on points or legend items to provide further details</p>
+			    <p>Click and drag in the plotting area to zoom in. Double click to zoom out</p>
+			    <p>Explore the tabs below for more formatting and interactivity options<p>
                     </div>
                 </div>
 
@@ -168,6 +171,10 @@
                                 <span>Show Family Emojis</span>
                             </label>
                             <label class="checkbox-item">
+                                <input type="checkbox" id="show-code-emojis">
+                                <span>Show Code Emojis</span>
+                            </label>
+                            <label class="checkbox-item">
                                 <input type="checkbox" id="dark-chart">
                                 <span>Bright Mode</span>
                             </label>
@@ -265,7 +272,7 @@
     </div>
 
     <footer class="page-footer">
-        Cosmo Comparisons &middot; C. Lovell &middot; Data sourced from published literature &middot; <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>
+        Cosmo Carta &middot; C. Lovell &middot; Data sourced from published literature &middot; <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>
     </footer>
 
     <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle controls">
@@ -278,7 +285,7 @@
 
     <div class="mobile-warning" id="mobile-warning">
         <div class="mobile-warning-box">
-            <p>Cosmo Comparisons is designed for desktop use and may not display correctly on small screens.</p>
+            <p>Cosmo Carta is designed for desktop use and may not display correctly on small screens.</p>
             <button id="mobile-warning-dismiss">Continue anyway</button>
         </div>
     </div>

@@ -160,6 +160,10 @@ body.sidebar-open .main-content {
     padding-bottom: 4px;
 }
 
+#about-content p {
+    margin: 0 0 6px;
+}
+
 .section-content.collapsed {
     display: none;
 }

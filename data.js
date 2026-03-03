@@ -57,7 +57,7 @@ const simulationFamilies = {
         'CAMELS-2': {size: 50/0.7, m_g: 2e7, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, suite: true, year: 2021}
     },
     'FLARES': {
-        'FLARES': {size: 14.28, m_g: 1.81e6, 'radiative-transfer': false, complete: true, redshift_end: 5.0, periodic: false, star: true, year: 2021},
+        'FLARES': {size: 14.28, m_g: 1.81e6, 'radiative-transfer': false, complete: true, redshift_end: 5.0, periodic: false, suite: true, star: true, year: 2021},
     },
     'Individual': {
         'Horizon-AGN': {size: 120, m_g: 4e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2014, ads: 'https://ui.adsabs.harvard.edu/abs/2014MNRAS.444.1453D'},
@@ -140,6 +140,13 @@ const familyEmoji = {
     'Quijote':       '🏇',
 };
 
+// Optional emoji per numerical code. Value is a Unicode emoji or PNG filename from emoji/ folder.
+const codeEmoji = {
+    'SWIFT': 'swift.png',
+    'Arepo': '🅰️',
+    'Gadget-2': '🇬',
+};
+
 // Flatten simulations for backward compatibility
 const simulations = {};
 Object.entries(simulationFamilies).forEach(([suite, sims]) => {
@@ -147,6 +154,9 @@ Object.entries(simulationFamilies).forEach(([suite, sims]) => {
         simulations[name] = data;
     });
 });
+
+// Default code to 'Other' for any simulation without one
+Object.values(simulations).forEach(sim => { if (!sim.code) sim.code = 'Other'; });
 
 // Survey data
 const surveys = {

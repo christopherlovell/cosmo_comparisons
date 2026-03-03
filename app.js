@@ -240,6 +240,11 @@ function getSimEmoji(simName) {
     return suite ? (familyEmoji[suite] || null) : null;
 }
 
+function getCodeEmoji(simName) {
+    const sim = simulations[simName];
+    return sim && sim.code ? (codeEmoji[sim.code] || null) : null;
+}
+
 const YEAR_MIN = 1990;
 const YEAR_MAX = new Date().getFullYear();
 
@@ -554,8 +559,14 @@ function render() {
     const showLegend = document.getElementById('show-legend').checked;
     const showIconKey = document.getElementById('show-icon-key').checked;
     const showEmojis = document.getElementById('show-emojis').checked;
+    const showCodeEmojis = document.getElementById('show-code-emojis').checked;
 
-    const emojiActive = d => showEmojis && !!getSimEmoji(d[0]);
+    const activeEmoji = name => {
+        if (showCodeEmojis) { const ce = getCodeEmoji(name); if (ce) return ce; }
+        if (showEmojis) return getSimEmoji(name);
+        return null;
+    };
+    const emojiActive = d => !!activeEmoji(d[0]);
     const isPng = e => e && e.endsWith('.png');
 
     // Filter simulations
@@ -583,8 +594,8 @@ function render() {
         // Check publication year filter
         if (sim.year !== undefined && (sim.year < currentMinYear || sim.year > currentMaxYear)) return false;
 
-        // Code filter: only applies to sims that have a code assigned
-        if (sim.code && !selectedCodes.has(sim.code)) return false;
+        // Code filter
+        if (!selectedCodes.has(sim.code)) return false;
 
         // Must be in selected individual sims
         return selectedSims.includes(name);
@@ -688,6 +699,11 @@ function render() {
         .attr('width', 16)
         .attr('height', 16);
 
+    // Outer ring for zoom+suite combos (circle enclosing the zoom square)
+    pointsEnter.append('circle')
+        .attr('class', 'outer-ring')
+        .attr('r', 13);
+
     pointsEnter.append('text')
         .attr('class', 'emoji-text')
         .attr('text-anchor', 'middle')
@@ -746,7 +762,13 @@ function render() {
 
     allPoints.select('.suite-ring')
         .attr('stroke', d => simColor(d[1]))
-        .attr('opacity', d => emojiActive(d) ? 0 : (d[1].suite ? (d[1].complete ? 1 : 0.3) : 0));
+        .attr('opacity', d => emojiActive(d) ? 0 : (d[1].suite && d[1].periodic ? (d[1].complete ? 1 : 0.3) : 0));
+
+    allPoints.select('.outer-ring')
+        .attr('fill', 'none')
+        .attr('stroke', d => simColor(d[1]))
+        .attr('stroke-width', 1.5)
+        .attr('opacity', d => emojiActive(d) ? 0 : (d[1].suite && !d[1].periodic ? (d[1].complete ? 1 : 0.3) : 0));
 
     allPoints.select('.main-circle')
         .attr('fill', d => simColor(d[1]))
@@ -771,22 +793,27 @@ function render() {
 
     allPoints.select('.emoji-text')
         .text(d => {
-            const e = getSimEmoji(d[0]);
-            return (showEmojis && e && !isPng(e)) ? e : '';
+            const e = activeEmoji(d[0]);
+            return (e && !isPng(e)) ? e : '';
         })
         .attr('opacity', d => {
-            const e = getSimEmoji(d[0]);
-            return (showEmojis && e && !isPng(e)) ? 1 : 0;
+            const e = activeEmoji(d[0]);
+            return (e && !isPng(e)) ? 1 : 0;
         });
 
+    const isDarkMode = !document.getElementById('dark-chart').checked;
     allPoints.select('.emoji-image')
         .attr('href', d => {
-            const e = getSimEmoji(d[0]);
-            return (showEmojis && e && isPng(e)) ? `emoji/${e}` : null;
+            const e = activeEmoji(d[0]);
+            return (e && isPng(e)) ? `emoji/${e}` : null;
         })
         .attr('opacity', d => {
-            const e = getSimEmoji(d[0]);
-            return (showEmojis && e && isPng(e)) ? 1 : 0;
+            const e = activeEmoji(d[0]);
+            return (e && isPng(e)) ? 1 : 0;
+        })
+        .style('filter', d => {
+            const e = activeEmoji(d[0]);
+            return (e && isPng(e) && isDarkMode && e === getCodeEmoji(d[0])) ? 'invert(1)' : null;
         });
 
     allPoints.select('.point-label')
@@ -1063,6 +1090,42 @@ function render() {
             .attr('class', 'icon-key-label')
             .text('Zoom Simulation');
 
+        // // Zoom + Suite (dot inside square inside circle)
+        // const zoomSuiteItem = keyDiv.append('div')
+        //     .attr('class', 'icon-key-item');
+
+        // const zoomSuiteSvg = zoomSuiteItem.append('svg')
+        //     .attr('width', 30)
+        //     .attr('height', 30)
+        //     .attr('overflow', 'visible');
+
+        // zoomSuiteSvg.append('circle')
+        //     .attr('cx', 15)
+        //     .attr('cy', 15)
+        //     .attr('r', 13)
+        //     .attr('fill', 'none')
+        //     .attr('class', 'icon-key-stroke')
+        //     .attr('stroke-width', 1.5);
+
+        // zoomSuiteSvg.append('rect')
+        //     .attr('x', 7)
+        //     .attr('y', 7)
+        //     .attr('width', 16)
+        //     .attr('height', 16)
+        //     .attr('fill', 'none')
+        //     .attr('class', 'icon-key-stroke')
+        //     .attr('stroke-width', 1.5);
+
+        // zoomSuiteSvg.append('circle')
+        //     .attr('cx', 15)
+        //     .attr('cy', 15)
+        //     .attr('r', 5)
+        //     .attr('class', 'icon-key-fill');
+
+        // zoomSuiteItem.append('span')
+        //     .attr('class', 'icon-key-label')
+        //     .text('Zoom + Suite');
+
         // MHD (dot with dipole field lines)
         const mhdItem = keyDiv.append('div')
             .attr('class', 'icon-key-item');
@@ -1283,8 +1346,21 @@ document.getElementById('anim-speed').addEventListener('input', e => {
     document.getElementById('anim-speed-value').textContent = (animStepMs / 1000).toFixed(1) + 's / yr';
 });
 
-document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #show-emojis, #filter-periodic, #filter-zoom, #filter-rt, #filter-hydro, #filter-dmo, #filter-mhd').forEach(cb => {
+document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #show-emojis, #show-code-emojis, #filter-periodic, #filter-zoom, #filter-rt, #filter-hydro, #filter-dmo, #filter-mhd').forEach(cb => {
     cb.addEventListener('change', render);
+});
+
+document.getElementById('show-emojis').addEventListener('change', function() {
+    if (this.checked) {
+        document.getElementById('show-code-emojis').checked = false;
+        render();
+    }
+});
+document.getElementById('show-code-emojis').addEventListener('change', function() {
+    if (this.checked) {
+        document.getElementById('show-emojis').checked = false;
+        render();
+    }
 });
 
 document.querySelectorAll('.code-checkbox').forEach(cb => cb.addEventListener('change', render));
@@ -1561,6 +1637,7 @@ document.getElementById('reset-all').addEventListener('click', () => {
     document.getElementById('show-legend').checked = true;
     document.getElementById('show-icon-key').checked = true;
     document.getElementById('show-emojis').checked = false;
+    document.getElementById('show-code-emojis').checked = false;
     document.getElementById('dark-chart').checked = false;
     document.querySelector('.chart-container').classList.add('dark');
 
