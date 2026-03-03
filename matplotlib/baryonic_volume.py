@@ -1,4 +1,3 @@
-
 import numpy as np
 import os
 import sys
@@ -14,7 +13,7 @@ from scipy import interpolate
 plt.style.use('matplotlibrc.txt')
 
 
-add_zoom_simulations = True
+add_zoom_simulations = False
 colour_by_redshift_endpoint = False
 
 # add surveys
@@ -33,7 +32,7 @@ width = 0.85
 ax = fig.add_axes((left, bottom, width, height))
 
 # set axes limits
-ax.set_xlim([9.8, 3.8])
+ax.set_xlim([12.2, 3.8])
 ax.set_ylim([3.0, 11.99])
 
 # set colour scale for redshift end-point
@@ -102,7 +101,16 @@ simulations['COLIBRE-50'] = {'size': 50, 'm_g': 2.3e5,  'RT': False, 'complete':
 simulations['COLIBRE-200'] = {'size': 200, 'm_g': 1.84e6,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
 simulations['COLIBRE-100'] = {'size': 100, 'm_g': 1.84e6,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
 simulations['COLIBRE-400'] = {'size': 400, 'm_g': 1.47e7,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
- 
+
+# Big DMO runs
+simulations['SMDPL'] = {'size': 400/0.6711, 'm_dm': 9.6e7/0.6711,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+simulations['Chinchilla'] = {'size': 400/0.6711, 'm_dm': 5.9e8/0.6711,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+simulations['MDPL2'] = {'size': 1000/0.6711, 'm_dm': 1.5e9/0.6711,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+simulations['Abacus Summit'] = {'size': 2000/0.6711, 'm_dm': 2.1e9/0.6711,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+simulations['Outer Rim'] = {'size': 3000/0.6711, 'm_dm': 1.8e9/0.6711,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+simulations['Flagship'] = {'size': 3600/0.6711, 'm_dm': 1.0e9/0.6711,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+simulations['HalfDome'] = {'size': 3750/0.6711, 'm_dm': 2.0e10/0.6711,  'RT': False, 'complete': True, 'redshift_end': 0.0, 'label': False}
+
 
 # simulations['SPICE'] = {'size': 10/0.7, 'm_g': 970,  'RT': True, 'complete': True, 'redshift_end': 5.0, 'label': False}
 
@@ -114,7 +122,7 @@ simulations['COLIBRE-400'] = {'size': 400, 'm_g': 1.47e7,  'RT': False, 'complet
 
 
 # # zoom simulations (e.g FLARES)
-zoom_simulations = {}
+# zoom_simulations = {}
 # zoom_simulations['FLARES-1'] = {
 #     'parent': 3200,
 #     'size': [np.array([8.0, 8.5, 9.0, 9.5, 10., 10.5, 11.0]), np.array([6.5, 6.7, 6.8, 6.9, 7.1, 7.5, 8.0])],
@@ -146,12 +154,21 @@ surveys['Webb/NGDEEP'] = {'area': 8.}
 # list of simulations labelled with a number
 labels = []
 
+# resolve mass key for plotting
+def get_resolution_mass(simulation):
+    if 'm_g' in simulation:
+        return simulation['m_g']
+    if 'm_dm' in simulation:
+        return simulation['m_dm']
+    raise KeyError('Simulation missing resolution mass (m_g or m_dm).')
+
 # starting index for simulations labelled with a number 
 j = 1
 
 for i, (simulation_name, simulation) in enumerate(simulations.items()):
 
     s = simulation
+    m_res = get_resolution_mass(s)
 
     marker = 'o'
 
@@ -170,8 +187,11 @@ for i, (simulation_name, simulation) in enumerate(simulations.items()):
     if 'suite' in s:
         c = 'red'
 
+    if 'm_dm' in s:
+        c = 'purple'
+
     ax.scatter(
-        np.log10(s['m_g']),
+        np.log10(m_res),
         3*np.log10(s['size']),
         c=[c],
         s=20,
@@ -182,7 +202,7 @@ for i, (simulation_name, simulation) in enumerate(simulations.items()):
 
     if s['RT']:
         ax.scatter(
-            np.log10(s['m_g']),
+            np.log10(m_res),
             3*np.log10(s['size']),
             facecolors='none',
             edgecolors=c,
@@ -197,7 +217,7 @@ for i, (simulation_name, simulation) in enumerate(simulations.items()):
     if (s['label'] is True) and (number_all is False):
 
         ax.text(
-            np.log10(s['m_g']),
+            np.log10(m_res),
             3*np.log10(s['size'])-0.25,
             simulation_name,
             fontsize=7,
@@ -211,7 +231,7 @@ for i, (simulation_name, simulation) in enumerate(simulations.items()):
 
         # add number label
         ax.text(
-            np.log10(s['m_g'])-0.075,
+            np.log10(m_res)-0.075,
             3*np.log10(s['size'])-0.15,
             j,
             fontsize=7,
@@ -227,8 +247,8 @@ for i, (simulation_name, simulation) in enumerate(simulations.items()):
         j += 1
 
 # add labels for numbered simulations
-x_pos = 9.7
-y_start_pos = 7.3
+x_pos = 12.1
+y_start_pos = 8.8
 y_increment = 0.2
 
 for i, simulation in enumerate(labels):
@@ -320,17 +340,17 @@ if add_surveys:
 # )
 # ax.text(5, 10, 'target\nparameter\nspace', va='center', ha='center')
 
-ax.scatter([6.3], [9], marker='*', color='red', s=20)
-ax.text(
-    6.3 - 0.1, 9,
-    rf'$\rm\bf CARAVAN$',
-    c='red',
-    rotation=0,
-    fontsize=10,
-    ha='left',
-    va='center'
-)
-
+# ax.scatter([6.3], [9], marker='*', color='red', s=20)
+# ax.text(
+#     6.3 - 0.1, 9,
+#     rf'$\rm\bf CARAVAN$',
+#     c='red',
+#     rotation=0,
+#     fontsize=10,
+#     ha='left',
+#     va='center'
+# )
+# 
 ax.scatter([np.log10(1.81e6)], [np.log10(3.2e3**3)], marker='*', color='green', s=20)
 ax.text(
     np.log10(1.81e6)-0.1, np.log10(3.2e3**3),
@@ -353,6 +373,27 @@ ax.text(
     va='center'
 )
 
+# Quijote suite (fiducial cosmology)
+quijote_omega_m = 0.3175
+quijote_h = 0.6711
+quijote_L = 1000.0  # Mpc/h
+quijote_n = np.array([512, 1024])
+quijote_m_dm = 2.775e11 * quijote_omega_m * quijote_L**3 / (quijote_n**3)  # Msun/h
+quijote_m_dm = quijote_m_dm / quijote_h  # Msun
+quijote_size = quijote_L / quijote_h
+quijote_x = np.log10(quijote_m_dm)
+quijote_y = np.full(2, 3*np.log10(quijote_size))
+ax.scatter(quijote_x, quijote_y, marker='o', color='blue', s=20)
+ax.text(
+    np.mean(quijote_x), quijote_y[0] + 0.25,
+    rf'$\rm\bf QUIJOTE$',
+    c='blue',
+    rotation=0,
+    fontsize=7,
+    ha='center',
+    va='center'
+)
+
 
 # add secondary x-axis at top for minimum resolved galaxy stellar mass (100x bottom axis)
 ax2 = ax.twiny()
@@ -368,7 +409,7 @@ ax2.set_xticks(tick_positions)
 ax2.set_xticklabels([f'{int(tick+2)}' for tick in tick_positions])
 
 # add axes labels
-ax.set_xlabel(r'$\rm\log_{10}(baryonic\ resolution\ element\ mass/M_{\odot})$')
+ax.set_xlabel(r'$\rm\log_{10}(baryonic\ /\ dark\ matter\ resolution\ element\ mass/M_{\odot})$')
 ax.set_ylabel(r'$\rm\log_{10}(volume/cMpc^{3})$')
 
 noflares='' # '_noflares'  # ''

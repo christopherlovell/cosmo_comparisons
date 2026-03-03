@@ -4,18 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cosmological Simulations Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="styles.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 </head>
-<body>
+<body class="sidebar-open">
     <div class="container">
         <div class="header">
+            <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle controls">
+                <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <line x1="0" y1="1" x2="18" y2="1"/>
+                    <line x1="0" y1="7" x2="18" y2="7"/>
+                    <line x1="0" y1="13" x2="18" y2="13"/>
+                </svg>
+            </button>
             <h1>Cosmo Comparisons</h1>
             <p class="subtitle">Interactive visualization of cosmological simulations on the mass resolution -- volume plane</p>
         </div>
         
         <div class="main-content">
             <div class="sidebar">
+                <div class="sidebar-inner">
                 <div class="control-section">
                     <h3 class="section-header" data-section="yaxis">
                         <span class="toggle-icon collapsed">▼</span>
@@ -41,19 +51,17 @@
                         Redshift Parameters
                     </h3>
                     <div class="section-content" id="redshift-content">
-                        <div style="margin-bottom: 12px;">
-                            <label style="font-size: 12px; display: block; margin-bottom: 4px;">
+                        <div class="slider-group">
+                            <label class="slider-label">
                                 Central Redshift (z): <span id="z-value">7.0</span>
                             </label>
-                            <input type="range" id="z-slider" min="0" max="15" step="0.5" value="7"
-                                   style="width: 100%; cursor: pointer;">
+                            <input type="range" id="z-slider" min="0" max="15" step="0.5" value="7">
                         </div>
                         <div>
-                            <label style="font-size: 12px; display: block; margin-bottom: 4px;">
+                            <label class="slider-label">
                                 Redshift Range (Δz): <span id="dz-value">1.0</span>
                             </label>
-                            <input type="range" id="dz-slider" min="0.1" max="5" step="0.1" value="1"
-                                   style="width: 100%; cursor: pointer;">
+                            <input type="range" id="dz-slider" min="0.1" max="5" step="0.1" value="1">
                         </div>
                     </div>
                 </div>
@@ -76,6 +84,14 @@
                             <label class="checkbox-item">
                                 <input type="checkbox" id="filter-rt" checked>
                                 <span>Radiative Transfer</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="filter-hydro" checked>
+                                <span>Hydrodynamic</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="filter-dmo" checked>
+                                <span>Dark Matter Only</span>
                             </label>
                         </div>
                     </div>
@@ -100,6 +116,10 @@
                                 <input type="checkbox" id="show-icon-key" checked>
                                 <span>Show Icon Key</span>
                             </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="dark-chart">
+                                <span>Bright Mode</span>
+                            </label>
                         </div>
                     </div>
                 </div>
@@ -123,12 +143,14 @@
                         <option value="svg">SVG Vector</option>
                     </select>
                 </div>
-            </div>
+                </div><!-- /.sidebar-inner -->
+            </div><!-- /.sidebar -->
 
-            <div class="chart-container">
+            <div class="chart-container dark">
                 <svg id="chart"></svg>
                 <div class="tooltip"></div>
             </div>
+            <div class="sidebar-overlay" id="sidebar-overlay"></div>
         </div>
     </div>
 

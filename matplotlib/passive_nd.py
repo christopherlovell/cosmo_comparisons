@@ -1,9 +1,11 @@
 """
 Passive number densities - replicating top panel of Figure 2 from arXiv:2211.07540
+Bottom panel: UV luminosity function
 """
 
 import numpy as np
 import matplotlib.pyplot as plt
+from astropy.cosmology import Planck18
 
 # Data from Table 1 - Volume normalised number densities, log10 n_g / Mpc^-3
 # FLARES data
@@ -119,85 +121,97 @@ ax1.text(5.2, -4.2, 'Cosmic variance\nlimited regime', fontsize=9, color='black'
 # Add legend
 ax1.legend(loc='lower left', fontsize=10, ncol=1)
 
-# ===== SECOND SUBPLOT: Stellar-halo mass relation =====
-# Moster+13 semi-empirical relationship (simplified approximation)
-# Based on the screenshot, creating a typical SHMR curve
-halo_mass = np.logspace(10.0, 15.0, 100)  # 10^10.5 to 10^15 solar masses
-log_halo_mass = np.log10(halo_mass)
+# ===== SECOND SUBPLOT: UV Luminosity Function =====
+# Load UVLF data
+eagle_dat = np.loadtxt('../../toobig/data/uvlf_eagle.txt', dtype=np.float64, skiprows=1, delimiter=',')
+flares_dat = np.loadtxt('../../toobig/data/uvlf_flares.txt', dtype=np.float64, skiprows=1, delimiter=',')
+# sphinx_dat = np.loadtxt('../../toobig/data/uvlf_sphinx.txt', dtype=np.float64, skiprows=1, delimiter=',')
 
-# Simplified Moster+13-like relationship
-# Peak efficiency around 10^12 solar masses, declining at high and low masses
-log_M1 = 11.8  # Peak halo mass
-N = 0.03  # Peak efficiency
-alpha = 1.3  # Low mass slope
-beta = 0.6   # High mass slope
-gamma = 0.5  # Transition sharpness
+redshift = 8
 
-# SHMR efficiency function
-efficiency = 2 * N / ((halo_mass/10**log_M1)**(-alpha) + (halo_mass/10**log_M1)**beta)
-stellar_mass_ratio = efficiency
+# Survey definitions
+euclid_deep = {
+    'name': 'Euclid\nDeep',
+    'area': 50,  # square degrees
+    'depth': -20.7,
+}
 
-ax2.plot(log_halo_mass, stellar_mass_ratio, 'g-', linewidth=2, label='z = 0 (Moster+13)')
+euclid_wide = {
+    'name': 'Euclid\nWide',
+    'area': 15000,  # square degrees
+    'depth': -22.75,
+}
 
-# Add z~5 SHMR using provided data points
-z5_halo_mass = np.array([11, 11.415841584158416, 11.828382838283828, 12.184818481848184,
-                        12.732673267326733, 13.138613861386139, 13.508250825082508,
-                        13.996699669966997])
-z5_log_efficiency = np.array([-2.4397590361445785, -2.141566265060241, -1.8253012048192772,
-                             -1.5753012048192772, -1.3283132530120478, -1.3644578313253009,
-                             -1.5391566265060241, -1.8493975903614457])
-z5_efficiency = 10**z5_log_efficiency
+jwst_jades = {
+    'name': 'JWST JADES',
+    'area': 46 / 3600,  # arcmin^2 to deg^2
+    'depth': -18, # -16.25,
+}
 
-ax2.plot(z5_halo_mass, z5_efficiency, 'b', linewidth=2, label='z = 5 (Shuntov+22)')
+colors = ['mediumpurple', 'blueviolet', 'orange']
 
-# Find the peak of the relation and add vertical line
-peak_idx = np.argmax(stellar_mass_ratio)
-peak_halo_mass = log_halo_mass[peak_idx]
-peak_efficiency = stellar_mass_ratio[peak_idx]
-peak_stellar_mass = 10**peak_halo_mass * peak_efficiency
+# Plot UVLF data
+ax2.plot(flares_dat[:,0], flares_dat[:,1], label=r'FLARES', color='red', lw=3, alpha=0.8)
+ax2.plot(eagle_dat[:,0], eagle_dat[:,1], label='EAGLE\n'+r'(V = $\rm 100^3 \, Mpc^3$)', color='blue')
 
-# Add vertical line at peak
-ax2.axvline(peak_halo_mass, color='grey', linestyle='--', alpha=0.7)
+ax2.plot(
+    [-20, -20.4, -20.8, -21.2, -21.6, -22, -22.4, -22.8, -23],
+    [-3.8, -4.1, -4.4, -4.6, -5.2, -5.4, -6.4, -7, -7.5],
+    label='Euclid flagship\n'+r'(V = $\rm 5.3^3 \, Gpc^3$)',
+    color='black',
+    linestyle='dashed',
+)
 
-# Add label with peak stellar mass
-ax2.text(peak_halo_mass + 0.1, 0.0015,
-         r'Peak: M* ≈ $2 \times 10^{10}$ M☉',
-         rotation=90, fontsize=9, color='grey', va='bottom')
+# Add survey depth regions
+for survey, color in zip([euclid_deep, euclid_wide, jwst_jades], colors):
+    sky_fraction = survey['area'] / 41253  # full sky in deg^2
+    volume = sky_fraction * \
+        (Planck18.comoving_volume(redshift + 0.5).value -
+         Planck18.comoving_volume(redshift - 0.5).value)
 
-# Add vertical line at lower res limit
-ax2.axvline(10.2, color='grey', linestyle='--', alpha=0.7)
+    ax2.fill_between(
+        np.linspace(survey['depth'], -100, 2),
+        np.log10(1 / volume),
+        100,
+        alpha=0.3,
+        lw=2,
+        edgecolor='face',
+        color=color,
+    )
 
-# Add label with lower res limit
-ax2.text(10.2 + 0.1, 0.0015,
-         r'Res Limit: M* ≈ $10^{8}$ M☉',
-         rotation=90, fontsize=9, color='grey', va='bottom')
-
-# Add feedback arrows from the example figure
-# Star formation feedback arrow (left side, low mass halos)
-ax2.annotate('Stellar\nfeedback', xy=(11.0, 0.02), xytext=(11.0, 0.04),
-            arrowprops=dict(arrowstyle='->', color='orange', lw=2),
-            fontsize=10, ha='center', va='bottom', color='orange')
-
-# AGN feedback arrow (right side, high mass halos)
-ax2.annotate('AGN\nfeedback', xy=(14.2, 0.02), xytext=(14.2, 0.038),
-            arrowprops=dict(arrowstyle='->', color='orange', lw=2),
-            fontsize=10, ha='center', va='bottom', color='orange')
+    ax2.text(
+        survey['depth'] - 0.2,
+        np.log10(1 / volume) + 0.1,
+        survey['name'],
+        color='grey',
+        alpha=0.8,
+    )
 
 # Set labels and formatting for second subplot
-ax2.set_xlabel(r'$\mathrm{Log(halo\ mass)\ [M_{\odot}]}$', fontsize=12)
-ax2.set_ylabel(r'$\mathrm{Stellar\ mass\ /\ halo\ mass\ (average)}$', fontsize=12)
+ax2.set_xlabel(r'$\rm M_{UV,1500}$', fontsize=12)
+ax2.set_ylabel(r'$\phi \,/\, \mathrm{cMpc^{3} \; dex^{-1}}$', fontsize=12)
+ax2.set_xlim(-18, -25)
+ax2.set_ylim(-12, -1)
 
-# Set axis limits to match the screenshot
-ax2.set_xlim(10.0, 15.0)
-ax2.set_ylim(0.001, 0.08)
-ax2.set_yscale('log')
+# Add secondary y-axis for number of objects in 1 Gpc^3 volume
+ax2_twin = ax2.twinx()
+ax2_twin.set_ylim(ax2.get_ylim())
 
-# Add redshift label
-# ax2.text(14.75, 0.05, 'z = 0', fontsize=12, ha='right', va='top',
-#          bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+# Convert number density (Mpc^-3) to number of objects in 1 Gpc^3
+# 1 Gpc = 1000 Mpc, so 1 Gpc^3 = (1000)^3 Mpc^3 = 1e9 Mpc^3
+# N_objects = n_g * V_Gpc = n_g * 1e9
+# log10(N_objects) = log10(n_g) + 9
+
+# Create specific tick positions within the y-axis limits
+ylim2 = ax2.get_ylim()
+tick_positions2 = [tick for tick in range(int(ylim2[0]), int(ylim2[1])+1) if ylim2[0] <= tick <= ylim2[1]]
+ax2_twin.set_yticks(tick_positions2)
+# Only show labels for ticks where log10(N_objects) >= 0 (i.e., tick+9 >= 0, so tick >= -9)
+ax2_twin.set_yticklabels([f'{int(tick+9)}' if tick >= -9 else '' for tick in tick_positions2])
+ax2_twin.set_ylabel(r'$\mathrm{log_{10}}(N_{\mathrm{objects}} \,/\, \mathrm{Gpc^{3}})$', fontsize=12)
 
 # Add legend
-ax2.legend(loc='lower right', fontsize=10, facecolor='white', framealpha=1.0)
+ax2.legend(loc='lower left', fontsize=9, facecolor='white', framealpha=1.0)
 
 # Tight layout to prevent legend cutoff
 plt.tight_layout()

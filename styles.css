@@ -1,3 +1,18 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Sora:wght@600;700&display=swap");
+
+:root {
+    --bg-color: #0c0e12;
+    --card-bg: #15191f;
+    --sidebar-bg: #12161c;
+    --border-color: rgba(233, 238, 245, 0.15);
+    --text-color: #edf1f5;
+    --text-muted: #adb4bd;
+    --accent: #1fc9c2;
+    --hover: #ffc233;
+    --header-bg: #0a0c10;
+    --input-bg: #1b2028;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -5,50 +20,105 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
-    background: #f5f5f5;
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    font-size: 1rem;
+    line-height: 1.75;
+    background-color: var(--bg-color);
+    background-image:
+        radial-gradient(145% 110% at 8% -18%, rgba(31, 201, 194, 0.04), transparent 62%),
+        radial-gradient(115% 95% at 86% 0%, rgba(255, 194, 51, 0.03), transparent 66%);
+    color: var(--text-color);
     padding: 20px;
 }
 
 .container {
     max-width: 1400px;
     margin: 0 auto;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    background: var(--card-bg);
+    border-radius: 1rem;
+    border: 1px solid var(--border-color);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 40px);
 }
 
 .header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 30px;
+    background: var(--header-bg);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+    padding: 28px 32px;
     text-align: center;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.sidebar-toggle {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 8px 10px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    line-height: 0;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.sidebar-toggle:hover {
+    background: rgba(31, 201, 194, 0.1);
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 h1 {
+    font-family: "Sora", "Segoe UI", sans-serif;
     font-size: 28px;
-    margin-bottom: 10px;
+    letter-spacing: -0.01em;
+    margin-bottom: 8px;
+    color: var(--text-color);
 }
 
 .subtitle {
-    opacity: 0.9;
+    color: var(--text-muted);
     font-size: 14px;
 }
 
 .main-content {
     display: grid;
-    grid-template-columns: 280px 1fr;
+    grid-template-columns: 1fr;
     gap: 0;
-    height: 800px;
+    flex: 1;
+    min-height: 0;
+    transition: grid-template-columns 0.25s ease;
+}
+
+body.sidebar-open .main-content {
+    grid-template-columns: 280px 1fr;
 }
 
 .sidebar {
-    background: #fafafa;
-    border-right: 1px solid #e0e0e0;
-    padding: 20px;
-    overflow-y: scroll !important;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    overflow: hidden;
+    min-width: 0;
     height: 100%;
+}
+
+.sidebar-inner {
+    width: 280px;
+    height: 100%;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
 }
 
 .control-section {
@@ -56,12 +126,13 @@ h1 {
 }
 
 .control-section h3 {
-    font-size: 14px;
+    font-family: "Sora", "Segoe UI", sans-serif;
+    font-size: 11px;
     font-weight: 600;
     margin-bottom: 12px;
-    color: #333;
+    color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.08em;
 }
 
 .section-header {
@@ -72,18 +143,19 @@ h1 {
     gap: 8px;
     padding: 8px;
     margin: -8px -8px 12px -8px;
-    border-radius: 4px;
+    border-radius: 8px;
     transition: background 0.2s;
 }
 
 .section-header:hover {
-    background: #e8e8e8;
+    background: rgba(31, 201, 194, 0.08);
 }
 
 .toggle-icon {
     font-size: 10px;
     transition: transform 0.2s;
     display: inline-block;
+    color: var(--accent);
 }
 
 .toggle-icon.collapsed {
@@ -111,23 +183,26 @@ h1 {
     gap: 8px;
     font-size: 13px;
     cursor: pointer;
-    padding: 4px;
-    border-radius: 4px;
+    padding: 5px 6px;
+    border-radius: 6px;
     transition: background 0.2s;
+    color: var(--text-color);
 }
 
 .checkbox-item:hover {
-    background: #e8e8e8;
+    background: rgba(31, 201, 194, 0.08);
 }
 
 input[type="checkbox"] {
     cursor: pointer;
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
+    accent-color: var(--accent);
 }
 
 input[type="radio"] {
     cursor: pointer;
+    accent-color: var(--accent);
 }
 
 .radio-group {
@@ -142,11 +217,58 @@ input[type="radio"] {
     gap: 8px;
     font-size: 13px;
     cursor: pointer;
+    color: var(--text-color);
+}
+
+input[type="range"] {
+    accent-color: var(--accent);
+    width: 100%;
+    cursor: pointer;
+    display: block;
+}
+
+.slider-group {
+    margin-bottom: 12px;
+}
+
+.slider-label {
+    font-size: 12px;
+    display: block;
+    margin-bottom: 4px;
+}
+
+label {
+    color: var(--text-muted);
 }
 
 .chart-container {
     padding: 30px 30px 60px 30px;
     position: relative;
+    height: 100%;
+    overflow: hidden;
+    background: var(--chart-bg);
+    transition: background-color 0.3s;
+
+    /* Light mode defaults */
+    --chart-bg: #ffffff;
+    --chart-text: #333333;
+    --chart-text-muted: #666666;
+    --chart-axis: #666666;
+    --chart-grid: #e0e0e0;
+    --chart-panel-bg: #ffffff;
+    --chart-panel-border: #cccccc;
+    --chart-shadow: rgba(0, 0, 0, 0.08);
+}
+
+.chart-container.dark {
+    --chart-bg: #15191f;
+    --chart-text: #edf1f5;
+    --chart-text-muted: #adb4bd;
+    --chart-axis: rgba(233, 238, 245, 0.35);
+    --chart-grid: rgba(233, 238, 245, 0.07);
+    --chart-panel-bg: #1f252e;
+    --chart-panel-border: rgba(233, 238, 245, 0.15);
+    --chart-shadow: rgba(0, 0, 0, 0.4);
 }
 
 svg {
@@ -156,17 +278,19 @@ svg {
 
 .axis path,
 .axis line {
-    stroke: #666;
+    stroke: var(--chart-axis);
+    stroke-width: 1.5;
     shape-rendering: crispEdges;
 }
 
 .axis text {
-    fill: #333;
-    font-size: 11px;
+    fill: var(--chart-text);
+    font-size: 13px;
+    font-family: "Manrope", "Segoe UI", sans-serif;
 }
 
 .grid line {
-    stroke: #e0e0e0;
+    stroke: var(--chart-grid);
     stroke-dasharray: 2,2;
 }
 
@@ -185,17 +309,19 @@ svg {
 
 .tooltip {
     position: absolute;
-    background: rgba(0, 0, 0, 0.9);
-    color: white;
+    background: rgba(10, 12, 16, 0.95);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
     padding: 10px 12px;
-    border-radius: 4px;
+    border-radius: 8px;
     font-size: 12px;
+    font-family: "Manrope", "Segoe UI", sans-serif;
     pointer-events: none;
     opacity: 0;
     transition: opacity 0.2s;
     z-index: 1000;
     max-width: 250px;
-    line-height: 1.4;
+    line-height: 1.5;
 }
 
 .tooltip.visible {
@@ -204,19 +330,19 @@ svg {
 
 .legend-item {
     font-size: 11px;
-    fill: #666;
+    fill: var(--text-muted);
 }
 
 .survey-line {
-    stroke: #999;
+    stroke: var(--chart-text-muted);
     stroke-width: 2;
-    opacity: 0.3;
+    opacity: 0.4;
 }
 
 .survey-label {
     font-size: 9px;
-    fill: #666;
-    opacity: 0.7;
+    fill: var(--chart-text-muted);
+    opacity: 0.8;
 }
 
 .rt-ring {
@@ -230,21 +356,23 @@ svg {
 }
 
 .legend-box {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    background: var(--chart-panel-bg);
+    border: 1px solid var(--chart-panel-border);
+    border-radius: 8px;
     padding: 10px;
     font-size: 10px;
+    font-family: "Manrope", "Segoe UI", sans-serif;
     max-height: 600px;
     overflow-y: auto;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px var(--chart-shadow);
 }
 
 .legend-title {
+    font-family: "Sora", "Segoe UI", sans-serif;
     font-weight: 600;
     font-size: 11px;
     margin-bottom: 8px;
-    color: #333;
+    color: var(--chart-text);
 }
 
 .legend-entry {
@@ -258,35 +386,41 @@ svg {
 .legend-number {
     font-weight: 600;
     min-width: 20px;
-    color: #666;
+    color: var(--chart-text-muted);
 }
 
 .legend-name {
-    color: #333;
+    color: var(--chart-text);
 }
 
 .point-label {
     font-size: 9px;
     font-weight: 600;
-    fill: #333;
+    fill: var(--chart-text);
     pointer-events: none;
     text-anchor: middle;
 }
 
+.chart-label {
+    fill: var(--chart-text);
+}
+
 .icon-key {
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid #ccc;
-    border-radius: 4px;
+    background: var(--chart-panel-bg);
+    border: 1px solid var(--chart-panel-border);
+    border-radius: 8px;
     padding: 10px;
     font-size: 11px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    font-family: "Manrope", "Segoe UI", sans-serif;
+    box-shadow: 0 2px 8px var(--chart-shadow);
 }
 
 .icon-key-title {
+    font-family: "Sora", "Segoe UI", sans-serif;
     font-weight: 600;
     font-size: 12px;
     margin-bottom: 10px;
-    color: #333;
+    color: var(--chart-text);
 }
 
 .icon-key-item {
@@ -303,9 +437,17 @@ svg {
 }
 
 .icon-key-label {
-    color: #333;
+    color: var(--chart-text-muted);
     font-size: 10px;
     flex: 1;
+}
+
+.icon-key-fill {
+    fill: var(--chart-text);
+}
+
+.icon-key-stroke {
+    stroke: var(--chart-text);
 }
 
 .suite-group {
@@ -317,14 +459,14 @@ svg {
     align-items: center;
     gap: 6px;
     cursor: pointer;
-    padding: 4px;
+    padding: 5px 6px;
     margin-bottom: 4px;
-    border-radius: 4px;
+    border-radius: 6px;
     transition: background 0.2s;
 }
 
 .suite-header:hover {
-    background: #e8e8e8;
+    background: rgba(31, 201, 194, 0.08);
 }
 
 .suite-toggle {
@@ -332,6 +474,7 @@ svg {
     transition: transform 0.2s;
     display: inline-block;
     width: 12px;
+    color: var(--accent);
 }
 
 .suite-toggle.collapsed {
@@ -340,12 +483,13 @@ svg {
 
 .suite-checkbox {
     cursor: pointer;
+    accent-color: var(--accent);
 }
 
 .suite-name {
     font-weight: 600;
     font-size: 12px;
-    color: #333;
+    color: var(--text-color);
     flex: 1;
 }
 
@@ -364,33 +508,85 @@ svg {
 
 .download-section {
     padding: 20px;
-    border-top: 2px solid #e0e0e0;
+    border-top: 1px solid var(--border-color);
     margin-top: auto;
 }
 
 .download-select {
     width: 100%;
     padding: 10px 12px;
-    background: #667eea;
-    color: white;
+    background: var(--accent);
+    color: #0c0e12;
     border: none;
-    border-radius: 4px;
+    border-radius: 999px;
+    font-family: "Manrope", "Segoe UI", sans-serif;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
-    transition: background 0.2s;
+    transition: background 0.2s, color 0.2s;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='white' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%230c0e12' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 12px center;
+    background-position: right 14px center;
     padding-right: 36px;
 }
 
 .download-select:hover {
-    background-color: #5568d3;
+    background-color: #ffc233;
 }
 
 .download-select option {
-    background: white;
-    color: #333;
+    background: var(--card-bg);
+    color: var(--text-color);
+}
+
+/* ── Sidebar overlay (mobile backdrop) ─────────────────────────── */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 150;
+    cursor: pointer;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+/* ── Mobile layout ──────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    /* Chart always fills the full width — sidebar is an overlay */
+    body.sidebar-open .main-content {
+        grid-template-columns: 1fr;
+    }
+
+    /* Sidebar becomes a fixed drawer */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 280px;
+        z-index: 200;
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+        overflow: hidden;
+        border-right: 1px solid var(--border-color);
+    }
+
+    body.sidebar-open .sidebar {
+        transform: translateX(0);
+    }
+
+    body.sidebar-open .sidebar-overlay {
+        display: block;
+    }
+
+    .sidebar-toggle {
+        display: flex;
+    }
+
+    /* Prevent grid transition firing on mobile */
+    .main-content {
+        transition: none;
+    }
 }

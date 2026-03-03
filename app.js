@@ -30,6 +30,11 @@ function dVdzdOmega(z) {
     return DH * DC * DC / E(z);
 }
 
+// Return the resolution element mass regardless of sim type (baryonic or DM)
+function getResolutionMass(sim) {
+    return sim.m_g !== undefined ? sim.m_g : sim.m_dm;
+}
+
 // Calculate stellar mass upper limit from resolution
 // Minimum resolved stellar mass = 100 × gas particle mass
 function calcStellarMassLimit(m_g) {
@@ -61,26 +66,18 @@ function areaToVolume(area_arcmin2, z_center, delta_z) {
     return area_sr * dVdzdOmega_val * delta_z;
 }
 
-// Chart dimensions
+// Chart dimensions — width/height are set dynamically by resizeChart()
 const margin = {top: 40, right: 140, bottom: 60, left: 70};
-const width = 800 - margin.left - margin.right;
-const height = 700 - margin.top - margin.bottom;
+let width, height;
 
-const svg = d3.select('#chart')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom);
+const svg = d3.select('#chart');
 
 const g = svg.append('g')
     .attr('transform', `translate(${margin.left},${margin.top})`);
 
-// Scales
-const xScale = d3.scaleLinear()
-    .domain([10.5, 3.8])
-    .range([0, width]);
-
-const yScale = d3.scaleLinear()
-    .domain([3.0, 12])
-    .range([height, 0]);
+// Scales (ranges set in resizeChart)
+const xScale = d3.scaleLinear().domain([12.2, 3.8]);
+const yScale = d3.scaleLinear().domain([3.0, 12]);
 
 // Tooltip
 const tooltip = d3.select('.tooltip');
@@ -89,61 +86,43 @@ const tooltip = d3.select('.tooltip');
 const xAxis = d3.axisBottom(xScale).ticks(8);
 const yAxis = d3.axisLeft(yScale).ticks(10);
 
-const xAxisG = g.append('g')
-    .attr('class', 'axis')
-    .attr('transform', `translate(0,${height})`)
-    .call(xAxis);
+const xAxisG = g.append('g').attr('class', 'axis');
+const yAxisG = g.append('g').attr('class', 'axis');
+const yAxisRightG = g.append('g').attr('class', 'axis');
 
-const yAxisG = g.append('g')
-    .attr('class', 'axis')
-    .call(yAxis);
+// Grid groups (content set in resizeChart)
+const xGridG = g.append('g').attr('class', 'grid x-grid');
+const yGridG = g.append('g').attr('class', 'grid y-grid');
+let yGrid;
 
-// Grid
-const xGrid = d3.axisBottom(xScale).tickSize(-height).tickFormat('').ticks(8);
-let yGrid = d3.axisLeft(yScale).tickSize(-width).tickFormat('').ticks(10);
-
-g.append('g')
-    .attr('class', 'grid x-grid')
-    .attr('transform', `translate(0,${height})`)
-    .call(xGrid);
-
-const yGridG = g.append('g')
-    .attr('class', 'grid y-grid')
-    .call(yGrid);
-
-// Axis labels
-let xLabel = g.append('text')
-    .attr('x', width / 2)
-    .attr('y', height + 45)
+// Axis labels (positions set in resizeChart)
+const xLabel = g.append('text')
+    .attr('class', 'chart-label')
     .attr('text-anchor', 'middle')
-    .style('font-size', '14px')
-    .html('log<tspan baseline-shift="sub" font-size="11px">10</tspan>(baryonic resolution element mass/M<tspan baseline-shift="sub" font-size="11px">☉</tspan>)');
+    .style('font-size', '17px')
+    .html('log<tspan baseline-shift="sub" font-size="13px">10</tspan>(baryonic / dark matter resolution element mass/M<tspan baseline-shift="sub" font-size="13px">☉</tspan>)');
 
-let yLabel = g.append('text')
+const yLabel = g.append('text')
+    .attr('class', 'chart-label')
     .attr('transform', 'rotate(-90)')
-    .attr('x', -height / 2)
     .attr('y', -50)
     .attr('text-anchor', 'middle')
-    .style('font-size', '14px')
-    .html('log<tspan baseline-shift="sub" font-size="11px">10</tspan>(volume/cMpc<tspan baseline-shift="super" font-size="11px">3</tspan>)');
+    .style('font-size', '17px')
+    .html('log<tspan baseline-shift="sub" font-size="13px">10</tspan>(volume/cMpc<tspan baseline-shift="super" font-size="13px">3</tspan>)');
 
-// Top axis for stellar mass
+// Top axis for stellar mass (range set in resizeChart)
 const xScaleTop = d3.scaleLinear()
-    .domain([calcStellarMassLimit(Math.pow(10, 10.5)), calcStellarMassLimit(Math.pow(10, 3.8))])
-    .range([0, width]);
+    .domain([calcStellarMassLimit(Math.pow(10, 12.2)), calcStellarMassLimit(Math.pow(10, 3.8))]);
 
 const xAxisTop = d3.axisTop(xScaleTop).ticks(6);
+const xAxisTopG = g.append('g').attr('class', 'axis');
 
-g.append('g')
-    .attr('class', 'axis')
-    .call(xAxisTop);
-
-g.append('text')
-    .attr('x', width / 2)
+const topLabel = g.append('text')
+    .attr('class', 'chart-label')
     .attr('y', -25)
     .attr('text-anchor', 'middle')
-    .style('font-size', '13px')
-    .html('log<tspan baseline-shift="sub" font-size="10px">10</tspan>(minimum resolved galaxy stellar mass/M<tspan baseline-shift="sub" font-size="10px">☉</tspan>)');
+    .style('font-size', '17px')
+    .html('log<tspan baseline-shift="sub" font-size="13px">10</tspan>(minimum resolved galaxy stellar mass/M<tspan baseline-shift="sub" font-size="13px">☉</tspan>)');
 
 // Survey lines group
 const surveyGroup = g.append('g').attr('class', 'surveys');
@@ -169,7 +148,7 @@ Object.entries(simulationSuites).forEach(([suiteName, sims]) => {
         .attr('data-suite', suiteName);
 
     suiteHeader.append('span')
-        .attr('class', 'suite-toggle')
+        .attr('class', 'suite-toggle collapsed')
         .text('▼');
 
     suiteHeader.append('input')
@@ -183,7 +162,7 @@ Object.entries(simulationSuites).forEach(([suiteName, sims]) => {
         .text(suiteName);
 
     const suiteSimsContainer = suiteGroup.append('div')
-        .attr('class', 'suite-sims')
+        .attr('class', 'suite-sims collapsed')
         .attr('data-suite', suiteName);
 
     Object.keys(sims).forEach(simName => {
@@ -218,7 +197,7 @@ function updateYAxis(mode) {
     
     if (mode === 'volume') {
         yScale.domain([3.0, 12]);
-        yLabel.html('log<tspan baseline-shift="sub" font-size="11px">10</tspan>(volume/cMpc<tspan baseline-shift="super" font-size="11px">3</tspan>)');
+        yLabel.html('log<tspan baseline-shift="sub" font-size="13px">10</tspan>(volume/cMpc<tspan baseline-shift="super" font-size="13px">3</tspan>)');
     } else {
         // Calculate y-values for all simulations to determine range
         const yValues = Object.values(simulations).map(sim => {
@@ -232,7 +211,7 @@ function updateYAxis(mode) {
         const padding = (maxY - minY) * 0.1; // 10% padding
         
         yScale.domain([minY - padding, maxY + padding]);
-        yLabel.html(`log<tspan baseline-shift="sub" font-size="11px">10</tspan>(area/arcmin<tspan baseline-shift="super" font-size="11px">2</tspan>) @ z=${currentRedshift.toFixed(1)} (Δz=${currentDeltaZ.toFixed(1)})`);
+        yLabel.html(`log<tspan baseline-shift="sub" font-size="13px">10</tspan>(area/arcmin<tspan baseline-shift="super" font-size="13px">2</tspan>) @ z=${currentRedshift.toFixed(1)} (Δz=${currentDeltaZ.toFixed(1)})`);
     }
     
     yAxisG.transition().duration(500).call(yAxis);
@@ -246,7 +225,7 @@ function updateYAxis(mode) {
 
 function updateRedshiftParams() {
     if (currentYMode === 'area') {
-        yLabel.html(`log<tspan baseline-shift="sub" font-size="11px">10</tspan>(area/arcmin<tspan baseline-shift="super" font-size="11px">2</tspan>) @ z=${currentRedshift.toFixed(1)} (Δz=${currentDeltaZ.toFixed(1)})`);
+        yLabel.html(`log<tspan baseline-shift="sub" font-size="13px">10</tspan>(area/arcmin<tspan baseline-shift="super" font-size="13px">2</tspan>) @ z=${currentRedshift.toFixed(1)} (Δz=${currentDeltaZ.toFixed(1)})`);
         
         // Recalculate y-axis limits
         const yValues = Object.values(simulations).map(sim => {
@@ -281,10 +260,18 @@ function getYValue(sim) {
     }
 }
 
+function defaultSimColor() {
+    return document.querySelector('.chart-container').classList.contains('dark')
+        ? '#c8cdd4'
+        : '#333333';
+}
+
 function render() {
     const filterPeriodic = document.getElementById('filter-periodic').checked;
     const filterZoom = document.getElementById('filter-zoom').checked;
     const filterRT = document.getElementById('filter-rt').checked;
+    const filterHydro = document.getElementById('filter-hydro').checked;
+    const filterDMO = document.getElementById('filter-dmo').checked;
 
     const selectedSims = Array.from(document.querySelectorAll('.individual-sim:checked'))
         .map(cb => cb.value);
@@ -306,6 +293,10 @@ function render() {
 
         // Check radiative transfer filter
         if (!filterRT && sim['radiative-transfer']) return false;
+
+        // Check hydro / DMO filters
+        if (!filterHydro && !sim.dmo) return false;
+        if (!filterDMO && sim.dmo) return false;
 
         // Must be in selected individual sims
         return selectedSims.includes(name);
@@ -363,7 +354,7 @@ function render() {
         .attr('class', 'sim-point')
         .attr('transform', d => {
             // Start at final position
-            const x = xScale(Math.log10(d[1].m_g));
+            const x = xScale(Math.log10(getResolutionMass(d[1])));
             const y = yScale(getYValue(d[1]));
             return `translate(${x},${y}) scale(0)`;
         });
@@ -379,6 +370,13 @@ function render() {
     pointsEnter.append('path')
         .attr('class', 'highlight-star');
 
+    pointsEnter.append('rect')
+        .attr('class', 'zoom-box')
+        .attr('x', -8)
+        .attr('y', -8)
+        .attr('width', 16)
+        .attr('height', 16);
+
     pointsEnter.append('text')
         .attr('class', 'point-label')
         .attr('dy', -10);
@@ -387,14 +385,14 @@ function render() {
     pointsEnter.transition()
         .duration(200)
         .attr('transform', d => {
-            const x = xScale(Math.log10(d[1].m_g));
+            const x = xScale(Math.log10(getResolutionMass(d[1])));
             const y = yScale(getYValue(d[1]));
             return `translate(${x},${y}) scale(1.3)`;
         })
         .transition()
         .duration(200)
         .attr('transform', d => {
-            const x = xScale(Math.log10(d[1].m_g));
+            const x = xScale(Math.log10(getResolutionMass(d[1])));
             const y = yScale(getYValue(d[1]));
             return `translate(${x},${y}) scale(1)`;
         });
@@ -403,7 +401,7 @@ function render() {
     points.transition()
         .duration(400)
         .attr('transform', d => {
-            const x = xScale(Math.log10(d[1].m_g));
+            const x = xScale(Math.log10(getResolutionMass(d[1])));
             const y = yScale(getYValue(d[1]));
             return `translate(${x},${y}) scale(1)`;
         });
@@ -411,20 +409,25 @@ function render() {
     const allPoints = pointsEnter.merge(points);
 
     allPoints.select('.main-circle')
-        .attr('fill', d => d[1].highlight || '#333')
+        .attr('fill', d => d[1].dmo ? 'purple' : (d[1].highlight || defaultSimColor()))
         .attr('opacity', d => d[1].complete ? 1 : 0.3);
 
     allPoints.select('.rt-ring')
-        .attr('stroke', d => d[1].highlight || '#333')
-        .attr('opacity', d => (d[1]['radiative-transfer'] ? 1 : 0) * (d[1].complete ? 1 : 0.3));
+        .attr('opacity', 0);
 
     allPoints.select('.highlight-star')
         .attr('d', d => {
-            if (!d[1].star) return '';
+            if (!d[1]['radiative-transfer']) return '';
             return d3.symbol().type(d3.symbolStar).size(150)();
         })
-        .attr('stroke', d => d[1].highlight || '#333')
-        .attr('opacity', d => d[1].star ? 1 : 0);
+        .attr('stroke', d => d[1].highlight || defaultSimColor())
+        .attr('opacity', d => d[1]['radiative-transfer'] ? 1 : 0);
+
+    allPoints.select('.zoom-box')
+        .attr('fill', 'none')
+        .attr('stroke', d => d[1].highlight || defaultSimColor())
+        .attr('stroke-width', 1.5)
+        .attr('opacity', d => (!d[1].periodic ? 1 : 0) * (d[1].complete ? 1 : 0.3));
 
     allPoints.select('.point-label')
         .text(d => showLegend ? simNumberMap.get(d[0]) : '')
@@ -435,7 +438,9 @@ function render() {
         const volume = Math.pow(sim.size, 3);
         
         let details = `<strong>${name}</strong><br>`;
-        details += `Resolution: ${sim.m_g.toExponential(2)} M☉<br>`;
+        details += `Type: ${sim.dmo ? 'Dark Matter Only' : 'Hydrodynamic'}<br>`;
+        const massLabel = sim.dmo ? 'DM particle mass' : 'Baryonic mass';
+        details += `${massLabel}: ${getResolutionMass(sim).toExponential(2)} M☉<br>`;
         details += `Box size: ${sim.size.toFixed(1)} cMpc<br>`;
         details += `Volume: ${volume.toExponential(2)} cMpc³<br>`;
         if (sim['radiative-transfer']) details += `Radiative Transfer: Yes<br>`;
@@ -508,13 +513,13 @@ function render() {
 
     if (showIconKey) {
         const keyX = 10;
-        const keyY = height - 180;
+        const keyY = height - 230;
 
         const keyBox = iconKeyGroup.append('foreignObject')
             .attr('x', keyX)
             .attr('y', keyY)
             .attr('width', 180)
-            .attr('height', 190);
+            .attr('height', 220);
 
         const keyDiv = keyBox.append('xhtml:div')
             .attr('class', 'icon-key');
@@ -535,7 +540,7 @@ function render() {
             .attr('cx', 10)
             .attr('cy', 10)
             .attr('r', 5)
-            .attr('fill', '#333');
+            .attr('class', 'icon-key-fill');
 
         periodicItem.append('span')
             .attr('class', 'icon-key-label')
@@ -553,15 +558,14 @@ function render() {
             .attr('cx', 10)
             .attr('cy', 10)
             .attr('r', 5)
-            .attr('fill', '#333');
+            .attr('class', 'icon-key-fill');
 
-        rtSvg.append('circle')
-            .attr('cx', 10)
-            .attr('cy', 10)
-            .attr('r', 8)
+        rtSvg.append('path')
+            .attr('d', d3.symbol().type(d3.symbolStar).size(100)())
+            .attr('transform', 'translate(10,10)')
             .attr('fill', 'none')
-            .attr('stroke', '#333')
-            .attr('stroke-width', 1.5);
+            .attr('class', 'icon-key-stroke')
+            .attr('stroke-width', 2);
 
         rtItem.append('span')
             .attr('class', 'icon-key-label')
@@ -597,14 +601,16 @@ function render() {
             .attr('cx', 10)
             .attr('cy', 10)
             .attr('r', 5)
-            .attr('fill', '#333');
+            .attr('class', 'icon-key-fill');
 
-        zoomSvg.append('path')
-            .attr('d', d3.symbol().type(d3.symbolStar).size(100)())
-            .attr('transform', 'translate(10,10)')
+        zoomSvg.append('rect')
+            .attr('x', 2)
+            .attr('y', 2)
+            .attr('width', 16)
+            .attr('height', 16)
             .attr('fill', 'none')
-            .attr('stroke', '#333')
-            .attr('stroke-width', 2);
+            .attr('class', 'icon-key-stroke')
+            .attr('stroke-width', 1.5);
 
         zoomItem.append('span')
             .attr('class', 'icon-key-label')
@@ -627,6 +633,24 @@ function render() {
         highzItem.append('span')
             .attr('class', 'icon-key-label')
             .text('High Redshift');
+
+        // Dark Matter Only (purple dot)
+        const dmoItem = keyDiv.append('div')
+            .attr('class', 'icon-key-item');
+
+        const dmoSvg = dmoItem.append('svg')
+            .attr('width', 20)
+            .attr('height', 20);
+
+        dmoSvg.append('circle')
+            .attr('cx', 10)
+            .attr('cy', 10)
+            .attr('r', 5)
+            .attr('fill', 'purple');
+
+        dmoItem.append('span')
+            .attr('class', 'icon-key-label')
+            .text('Dark Matter Only');
     }
 }
 
@@ -716,8 +740,13 @@ document.getElementById('dz-slider').addEventListener('input', (e) => {
     updateRedshiftParams();
 });
 
-document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #filter-periodic, #filter-zoom, #filter-rt').forEach(cb => {
+document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #filter-periodic, #filter-zoom, #filter-rt, #filter-hydro, #filter-dmo').forEach(cb => {
     cb.addEventListener('change', render);
+});
+
+document.getElementById('dark-chart').addEventListener('change', (e) => {
+    document.querySelector('.chart-container').classList.toggle('dark', !e.target.checked);
+    render();
 });
 
 // Download functionality
@@ -776,5 +805,68 @@ document.getElementById('download-format').addEventListener('change', (e) => {
     e.target.value = '';
 });
 
-// Initial render
-render();
+function resizeChart() {
+    const container = document.querySelector('.chart-container');
+    const innerW = container.clientWidth - 60;   // 30px padding left + right
+    const innerH = container.clientHeight - 90;  // 30px top + 60px bottom padding
+    width  = innerW - margin.left - margin.right;
+    height = innerH - margin.top  - margin.bottom;
+    if (width < 50 || height < 50) return;
+
+    svg.attr('width', innerW).attr('height', innerH);
+
+    xScale.range([0, width]);
+    yScale.range([height, 0]);
+    xScaleTop.range([0, width]);
+
+    xAxisG.attr('transform', `translate(0,${height})`).call(xAxis);
+    yAxisG.call(yAxis);
+    xAxisTopG.call(xAxisTop);
+    yAxisRightG.attr('transform', `translate(${width},0)`)
+               .call(d3.axisRight(yScale).tickValues([]));
+
+    xGridG.attr('transform', `translate(0,${height})`)
+          .call(d3.axisBottom(xScale).tickSize(-height).tickFormat('').ticks(8));
+    yGrid = d3.axisLeft(yScale).tickSize(-width).tickFormat('').ticks(10);
+    yGridG.call(yGrid);
+
+    xLabel.attr('x', width / 2).attr('y', height + 45);
+    yLabel.attr('x', -height / 2);
+    topLabel.attr('x', width / 2);
+
+    render();
+}
+
+// ── Sidebar responsive behaviour ────────────────────────────────
+const MOBILE_BREAKPOINT = 768;
+
+// On mobile, start with sidebar hidden
+if (window.innerWidth <= MOBILE_BREAKPOINT) {
+    document.body.classList.remove('sidebar-open');
+}
+
+document.getElementById('sidebar-toggle').addEventListener('click', () => {
+    document.body.classList.toggle('sidebar-open');
+});
+
+document.getElementById('sidebar-overlay').addEventListener('click', () => {
+    document.body.classList.remove('sidebar-open');
+});
+
+// Re-open sidebar automatically when resizing back to desktop
+window.addEventListener('resize', () => {
+    if (window.innerWidth > MOBILE_BREAKPOINT) {
+        document.body.classList.add('sidebar-open');
+    }
+});
+
+// ── Initial sizing and render ────────────────────────────────────
+resizeChart();
+
+// Re-size on container change; debounce so the grid transition
+// (0.25s) finishes before we recalculate dimensions
+let resizeTimeout;
+new ResizeObserver(() => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(resizeChart, 50);
+}).observe(document.querySelector('.chart-container'));
