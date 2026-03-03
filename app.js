@@ -442,6 +442,17 @@ function defaultSimColor() {
         : '#333333';
 }
 
+// Colorscale for final redshift: white → orange → red
+const redshiftColorScale = d3.scaleLinear()
+    .domain([0, 3, 6])
+    .range(['#f0f0f0', '#ff8800', '#cc2200'])
+    .clamp(true);
+
+function simColor(sim) {
+    if (sim.dmo) return 'purple';
+    return redshiftColorScale(sim.redshift_end ?? 0);
+}
+
 // Planck 2018: H0 = 67.66 km/s/Mpc, Ωm = 0.3111
 // ρ_crit = 2.775e11 h² M_☉/Mpc³  →  ρ_m = Ωm × ρ_crit
 const LOG_RHO_M = Math.log10(2.775e11 * Math.pow(67.66 / 100, 2) * 0.3111);
@@ -689,15 +700,15 @@ function render() {
 
     allPoints.select('.mhd-field')
         .attr('d', d => d[1].mhd ? 'M 0,-5 C -9,-15 -9,15 0,5 M 0,-5 C 9,-15 9,15 0,5' : '')
-        .attr('stroke', d => d[1].dmo ? 'purple' : (d[1].highlight || defaultSimColor()))
+        .attr('stroke', d => simColor(d[1]))
         .attr('opacity', d => emojiActive(d) ? 0 : (d[1].mhd ? (d[1].complete ? 1 : 0.3) : 0));
 
     allPoints.select('.suite-ring')
-        .attr('stroke', d => d[1].dmo ? 'purple' : (d[1].highlight || defaultSimColor()))
+        .attr('stroke', d => simColor(d[1]))
         .attr('opacity', d => emojiActive(d) ? 0 : (d[1].suite ? (d[1].complete ? 1 : 0.3) : 0));
 
     allPoints.select('.main-circle')
-        .attr('fill', d => d[1].dmo ? 'purple' : (d[1].highlight || defaultSimColor()))
+        .attr('fill', d => simColor(d[1]))
         .attr('opacity', d => emojiActive(d) ? 0 : (d[1].complete ? 1 : 0.3));
 
     allPoints.select('.rt-ring')
@@ -708,12 +719,12 @@ function render() {
             if (!d[1]['radiative-transfer']) return '';
             return d3.symbol().type(d3.symbolStar).size(150)();
         })
-        .attr('stroke', d => d[1].highlight || defaultSimColor())
+        .attr('stroke', d => simColor(d[1]))
         .attr('opacity', d => emojiActive(d) ? 0 : (d[1]['radiative-transfer'] ? 1 : 0));
 
     allPoints.select('.zoom-box')
         .attr('fill', 'none')
-        .attr('stroke', d => d[1].highlight || defaultSimColor())
+        .attr('stroke', d => simColor(d[1]))
         .attr('stroke-width', 1.5)
         .attr('opacity', d => emojiActive(d) ? 0 : (!d[1].periodic ? 1 : 0) * (d[1].complete ? 1 : 0.3));
 
@@ -838,52 +849,33 @@ function render() {
 
     if (showIconKey) {
         const keyX = 10;
-        const keyY = height - 260;
+        const keyY = height - 240;
 
         const keyBox = iconKeyGroup.append('foreignObject')
             .attr('x', keyX)
             .attr('y', keyY)
             .attr('width', 180)
-            .attr('height', 250);
+            .attr('height', 230);
 
         const keyDiv = keyBox.append('xhtml:div')
             .attr('class', 'icon-key');
 
-        // Hydrodynamic (default dot)
-        const hydroItem = keyDiv.append('div')
-            .attr('class', 'icon-key-item');
+        // Final redshift colorbar
+        const colorbarItem = keyDiv.append('div')
+            .attr('class', 'icon-key-colorbar');
 
-        const hydroSvg = hydroItem.append('svg')
-            .attr('width', 20)
-            .attr('height', 20);
+        colorbarItem.append('div')
+            .attr('class', 'colorbar-label')
+            .text('Final redshift (z)');
 
-        hydroSvg.append('circle')
-            .attr('cx', 10)
-            .attr('cy', 10)
-            .attr('r', 5)
-            .attr('class', 'icon-key-fill');
+        colorbarItem.append('div')
+            .attr('class', 'colorbar-gradient');
 
-        hydroItem.append('span')
-            .attr('class', 'icon-key-label')
-            .text('Hydrodynamic');
-
-        // High Redshift (green dot)
-        const highzItem = keyDiv.append('div')
-            .attr('class', 'icon-key-item');
-
-        const highzSvg = highzItem.append('svg')
-            .attr('width', 20)
-            .attr('height', 20);
-
-        highzSvg.append('circle')
-            .attr('cx', 10)
-            .attr('cy', 10)
-            .attr('r', 5)
-            .attr('fill', 'green');
-
-        highzItem.append('span')
-            .attr('class', 'icon-key-label')
-            .text('High Redshift');
+        const tickRow = colorbarItem.append('div')
+            .attr('class', 'colorbar-ticks');
+        tickRow.append('span').text('0');
+        tickRow.append('span').text('3');
+        tickRow.append('span').text('≥6');
 
         // Dark Matter Only (purple dot)
         const dmoItem = keyDiv.append('div')
@@ -1138,7 +1130,7 @@ document.getElementById('year-max').addEventListener('input', e => {
     render();
 });
 
-const ANIM_STEP_MS = 400;
+let animStepMs = 400;
 
 function startAnimation() {
     if (!isAnimating) {
@@ -1168,9 +1160,9 @@ function startAnimation() {
             document.getElementById('year-play').textContent = '▶';
             return;
         }
-        animationId = setTimeout(step, ANIM_STEP_MS);
+        animationId = setTimeout(step, animStepMs);
     }
-    animationId = setTimeout(step, ANIM_STEP_MS);
+    animationId = setTimeout(step, animStepMs);
 }
 
 function pauseAnimation() {
@@ -1198,6 +1190,11 @@ document.getElementById('year-play').addEventListener('click', () => {
 });
 
 document.getElementById('year-stop').addEventListener('click', resetAnimation);
+
+document.getElementById('anim-speed').addEventListener('input', e => {
+    animStepMs = parseInt(e.target.value);
+    document.getElementById('anim-speed-value').textContent = (animStepMs / 1000).toFixed(1) + 's / yr';
+});
 
 document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #show-emojis, #filter-periodic, #filter-zoom, #filter-rt, #filter-hydro, #filter-dmo, #filter-mhd').forEach(cb => {
     cb.addEventListener('change', render);
@@ -1366,6 +1363,70 @@ document.getElementById('sidebar-toggle').addEventListener('click', () => {
 
 document.getElementById('mobile-warning-dismiss').addEventListener('click', () => {
     document.getElementById('mobile-warning').style.display = 'none';
+});
+
+document.getElementById('reset-all').addEventListener('click', () => {
+    // Stop any running animation and reset year range
+    resetAnimation();
+
+    // Animation speed
+    animStepMs = 400;
+    document.getElementById('anim-speed').value = 400;
+    document.getElementById('anim-speed-value').textContent = '0.4s / yr';
+
+    // Y-axis back to volume
+    document.querySelector('input[name="yaxis"][value="volume"]').checked = true;
+    updateYAxis('volume');
+
+    // Redshift sliders
+    currentRedshift = 7.0;
+    currentDeltaZ = 1.0;
+    document.getElementById('z-slider').value = 7;
+    document.getElementById('z-value').textContent = '7.0';
+    document.getElementById('dz-slider').value = 1;
+    document.getElementById('dz-value').textContent = '1.0';
+
+    // Final redshift slider
+    currentMaxRedshiftEnd = 20.0;
+    document.getElementById('finalz-slider').value = 20;
+    document.getElementById('finalz-value').textContent = '20.0';
+
+    // Simulation type filters — all on
+    ['filter-periodic', 'filter-zoom', 'filter-rt', 'filter-hydro', 'filter-dmo', 'filter-mhd']
+        .forEach(id => { document.getElementById(id).checked = true; });
+
+    // Visual elements
+    document.getElementById('show-surveys').checked = true;
+    document.getElementById('show-legend').checked = true;
+    document.getElementById('show-icon-key').checked = true;
+    document.getElementById('show-emojis').checked = false;
+    document.getElementById('dark-chart').checked = false;
+    document.querySelector('.chart-container').classList.add('dark');
+
+    // Sounds off
+    document.getElementById('play-sounds').checked = false;
+    document.getElementById('sound-controls').style.display = 'none';
+    soundGain = 0.3;
+    soundPitchShift = 0;
+    soundTailScale = 1.0;
+    document.getElementById('sound-gain').value = 0.3;
+    document.getElementById('sound-gain-value').textContent = '0.30';
+    document.getElementById('sound-pitch').value = 0;
+    document.getElementById('sound-pitch-value').textContent = '0 oct';
+    document.getElementById('sound-tail').value = 1;
+    document.getElementById('sound-tail-value').textContent = '1.0×';
+
+    // All numerical codes on
+    document.querySelectorAll('.code-checkbox').forEach(cb => { cb.checked = true; });
+
+    // All families and individual sims on
+    document.querySelectorAll('.family-checkbox, .individual-sim').forEach(cb => { cb.checked = true; });
+
+    // Clear sticky tooltip
+    stickyData = null;
+    tooltip.classed('visible', false).classed('sticky', false).style('pointer-events', 'none');
+
+    render();
 });
 
 document.getElementById('sidebar-overlay').addEventListener('click', () => {

@@ -136,6 +136,12 @@
                             <button id="year-play" class="year-btn">▶</button>
                             <button id="year-stop" class="year-btn">■</button>
                         </div>
+                        <div class="slider-group" style="margin-top: 10px;">
+                            <label class="slider-label">
+                                Speed: <span id="anim-speed-value">0.4s / yr</span>
+                            </label>
+                            <input type="range" id="anim-speed" min="100" max="2000" step="100" value="400">
+                        </div>
                     </div>
                 </div>
 
@@ -244,6 +250,10 @@
                         <option value="svg">SVG Vector</option>
                     </select>
                 </div>
+
+                <div class="reset-section">
+                    <button id="reset-all" class="reset-btn">Reset to defaults</button>
+                </div>
                 </div><!-- /.sidebar-inner -->
             </div><!-- /.sidebar -->
 
@@ -254,6 +264,10 @@
             <div class="sidebar-overlay" id="sidebar-overlay"></div>
         </div>
     </div>
+
+    <footer class="page-footer">
+        Cosmo Comparisons &middot; C. Lovell &middot; Data sourced from published literature &middot; <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>
+    </footer>
 
     <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle controls">
         <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">

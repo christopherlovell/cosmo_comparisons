@@ -40,7 +40,7 @@ body {
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    height: calc(100vh - 40px);
+    height: calc(100vh - 40px - 28px);
     min-height: 0;
 }
 
@@ -473,6 +473,31 @@ svg {
     flex: 1;
 }
 
+.icon-key-colorbar {
+    margin-top: 6px;
+}
+
+.colorbar-label {
+    font-size: 9px;
+    color: var(--chart-text-muted);
+    margin-bottom: 3px;
+}
+
+.colorbar-gradient {
+    height: 10px;
+    background: linear-gradient(to right, #f0f0f0, #ff8800, #cc2200);
+    border-radius: 2px;
+    border: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+.colorbar-ticks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9px;
+    color: var(--chart-text-muted);
+    margin-top: 2px;
+}
+
 .icon-key-divider {
     border-top: 1px solid var(--chart-panel-border);
     margin: 6px 0;
@@ -683,9 +708,31 @@ svg {
 }
 
 .download-section {
-    padding: 20px;
+    padding: 20px 20px 0;
     border-top: 1px solid var(--border-color);
     margin-top: auto;
+}
+
+.reset-section {
+    padding: 12px 20px 20px;
+}
+
+.reset-btn {
+    display: block;
+    width: 100%;
+    padding: 8px 0;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+}
+
+.reset-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
 }
 
 .download-select {
@@ -714,6 +761,23 @@ svg {
 .download-select option {
     background: var(--card-bg);
     color: var(--text-color);
+}
+
+/* ── Page footer ────────────────────────────────────────────────── */
+.page-footer {
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--text-muted);
+    opacity: 0.6;
+}
+
+.page-footer a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
 }
 
 /* ── Mobile warning overlay ─────────────────────────────────────── */
