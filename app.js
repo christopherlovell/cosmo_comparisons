@@ -75,6 +75,10 @@ const svg = d3.select('#chart');
 const g = svg.append('g')
     .attr('transform', `translate(${margin.left},${margin.top})`);
 
+// Clip path so data doesn't overflow plot boundary when zoomed
+const clipRect = svg.append('defs').append('clipPath').attr('id', 'plot-clip')
+    .append('rect').attr('x', 0).attr('y', 0);
+
 // Scales (ranges set in resizeChart)
 const xScale = d3.scaleLinear().domain([12.2, 3.8]);
 const yScale = d3.scaleLinear().domain([3.0, 12]);
@@ -139,6 +143,34 @@ const yearDisplayText = g.append('text')
     .attr('class', 'year-display')
     .attr('text-anchor', 'end')
     .style('opacity', 0);
+
+// ── Box-select zoom ──────────────────────────────────────────────
+const DEFAULT_X_DOMAIN = [12.2, 3.8];
+const DEFAULT_Y_DOMAIN = [3.0, 12];
+let isZoomed = false;
+let dragState = null;
+
+// Clip data groups to plot area
+particleGroup.attr('clip-path', 'url(#plot-clip)');
+surveyGroup.attr('clip-path', 'url(#plot-clip)');
+simGroup.attr('clip-path', 'url(#plot-clip)');
+
+// Transparent background rect (first child of g) — catches drag + dblclick on empty space
+const plotBg = g.insert('rect', ':first-child')
+    .attr('class', 'plot-background')
+    .attr('x', 0).attr('y', 0)
+    .attr('fill', 'transparent')
+    .attr('cursor', 'crosshair');
+
+// Rubber-band selection rect (last child of g, above data, no pointer events)
+const selectionRect = g.append('rect')
+    .attr('class', 'zoom-selection-rect')
+    .attr('fill', 'rgba(100, 150, 255, 0.15)')
+    .attr('stroke', '#88aaff')
+    .attr('stroke-dasharray', '4 2')
+    .attr('stroke-width', 1.5)
+    .attr('pointer-events', 'none')
+    .style('display', 'none');
 
 // Populate suite checkboxes
 const familyCheckboxContainer = d3.select('#family-checkboxes');
@@ -1333,6 +1365,9 @@ function resizeChart() {
     yScale.range([height, 0]);
     xScaleTop.range([0, width]);
 
+    clipRect.attr('width', width).attr('height', height);
+    plotBg.attr('width', width).attr('height', height);
+
     xAxisG.attr('transform', `translate(0,${height})`).call(xAxis);
     yAxisG.call(yAxis);
     xAxisTopG.call(xAxisTop);
@@ -1346,6 +1381,72 @@ function resizeChart() {
 
     render();
 }
+
+// ── Box-select zoom handlers ─────────────────────────────────────
+function refreshAxes() {
+    xAxisG.call(xAxis);
+    yAxisG.call(yAxis);
+    xAxisTopG.call(xAxisTop);
+    yAxisRightG.call(d3.axisRight(yScale).tickValues([]));
+}
+
+function resetZoom() {
+    if (!isZoomed) return;
+    xScale.domain(DEFAULT_X_DOMAIN);
+    yScale.domain(DEFAULT_Y_DOMAIN);
+    xScaleTop.domain([
+        calcStellarMassLimit(Math.pow(10, DEFAULT_X_DOMAIN[0])),
+        calcStellarMassLimit(Math.pow(10, DEFAULT_X_DOMAIN[1]))
+    ]);
+    isZoomed = false;
+    refreshAxes();
+    render();
+}
+
+svg.node().addEventListener('mousedown', event => {
+    if (event.target !== plotBg.node()) return;
+    const [mx, my] = d3.pointer(event, g.node());
+    dragState = { x0: mx, y0: my };
+    selectionRect
+        .attr('x', mx).attr('y', my)
+        .attr('width', 0).attr('height', 0)
+        .style('display', null);
+    event.preventDefault();
+});
+
+svg.node().addEventListener('mousemove', event => {
+    if (!dragState) return;
+    const [mx, my] = d3.pointer(event, g.node());
+    const x = Math.min(dragState.x0, mx);
+    const y = Math.min(dragState.y0, my);
+    const w = Math.abs(mx - dragState.x0);
+    const h = Math.abs(my - dragState.y0);
+    selectionRect.attr('x', x).attr('y', y).attr('width', w).attr('height', h);
+});
+
+window.addEventListener('mouseup', () => {
+    if (!dragState) return;
+    const x = +selectionRect.attr('x');
+    const y = +selectionRect.attr('y');
+    const w = +selectionRect.attr('width');
+    const h = +selectionRect.attr('height');
+    selectionRect.style('display', 'none');
+    dragState = null;
+    if (w < 10 || h < 10) return;
+    const newXDomain = [xScale.invert(x), xScale.invert(x + w)];
+    const newYDomain = [yScale.invert(y + h), yScale.invert(y)];
+    xScale.domain(newXDomain);
+    yScale.domain(newYDomain);
+    xScaleTop.domain([
+        calcStellarMassLimit(Math.pow(10, newXDomain[0])),
+        calcStellarMassLimit(Math.pow(10, newXDomain[1]))
+    ]);
+    isZoomed = true;
+    refreshAxes();
+    render();
+});
+
+plotBg.on('dblclick', resetZoom);
 
 // ── Sidebar responsive behaviour ────────────────────────────────
 const MOBILE_BREAKPOINT = 768;
@@ -1425,6 +1526,16 @@ document.getElementById('reset-all').addEventListener('click', () => {
     // Clear sticky tooltip
     stickyData = null;
     tooltip.classed('visible', false).classed('sticky', false).style('pointer-events', 'none');
+
+    // Reset zoom
+    xScale.domain(DEFAULT_X_DOMAIN);
+    yScale.domain(DEFAULT_Y_DOMAIN);
+    xScaleTop.domain([
+        calcStellarMassLimit(Math.pow(10, DEFAULT_X_DOMAIN[0])),
+        calcStellarMassLimit(Math.pow(10, DEFAULT_X_DOMAIN[1]))
+    ]);
+    isZoomed = false;
+    refreshAxes();
 
     render();
 });
