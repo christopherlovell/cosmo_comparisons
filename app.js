@@ -81,7 +81,7 @@ const clipRect = svg.append('defs').append('clipPath').attr('id', 'plot-clip')
 
 // Scales (ranges set in resizeChart)
 const xScale = d3.scaleLinear().domain([12.2, 3.8]);
-const yScale = d3.scaleLinear().domain([3.0, 12]);
+const yScale = d3.scaleLinear().domain([2.5, 12]);
 
 // Tooltip
 const tooltip = d3.select('.tooltip');
@@ -138,15 +138,15 @@ const legendGroup = g.append('g').attr('class', 'legend');
 // Icon key group
 const iconKeyGroup = g.append('g').attr('class', 'icon-key-group');
 
-// Animated year display (top-right of plot, shown only during timeline playback)
+// Animated year display (top-middle of plot, shown only during timeline playback)
 const yearDisplayText = g.append('text')
     .attr('class', 'year-display')
-    .attr('text-anchor', 'end')
+    .attr('text-anchor', 'middle')
     .style('opacity', 0);
 
 // ── Box-select zoom ──────────────────────────────────────────────
 const DEFAULT_X_DOMAIN = [12.2, 3.8];
-const DEFAULT_Y_DOMAIN = [3.0, 12];
+const DEFAULT_Y_DOMAIN = [2.5, 12];
 let isZoomed = false;
 let dragState = null;
 
@@ -402,9 +402,23 @@ function positionTooltip(event) {
     tooltip.style('left', left + 'px').style('top', top + 'px');
 }
 
+// Compute area-mode y domain from all simulations.
+// Filters out non-finite values (e.g. at z≈0 where volumeToArea → ∞)
+// and guarantees at least 1 log-unit of padding on each side.
+function calcAreaDomain() {
+    const yValues = Object.values(simulations)
+        .map(sim => getYValue(sim))
+        .filter(v => isFinite(v));
+    if (yValues.length === 0) return [0, 8];
+    const minY = Math.min(...yValues);
+    const maxY = Math.max(...yValues);
+    const pad = Math.max((maxY - minY) * 0.15, 0.5); // ≥15%, at least 0.5 log units
+    return [minY - pad, maxY + pad];
+}
+
 function updateYAxis(mode) {
     currentYMode = mode;
-    
+
     // Show/hide redshift controls
     const redshiftControls = document.getElementById('redshift-controls');
     if (mode === 'area') {
@@ -412,26 +426,15 @@ function updateYAxis(mode) {
     } else {
         redshiftControls.style.display = 'none';
     }
-    
+
     if (mode === 'volume') {
-        yScale.domain([3.0, 12]);
+        yScale.domain([2.5, 12]);
         yLabel.html('log<tspan dy="5" font-size="11px">10</tspan><tspan dy="-5">(volume / cMpc</tspan><tspan dy="-6" font-size="11px">3</tspan><tspan dy="6">)</tspan>');
     } else {
-        // Calculate y-values for all simulations to determine range
-        const yValues = Object.values(simulations).map(sim => {
-            const volume = Math.pow(sim.size, 3);
-            const area = volumeToArea(volume, currentRedshift, currentDeltaZ);
-            return Math.log10(area);
-        });
-        
-        const minY = Math.min(...yValues);
-        const maxY = Math.max(...yValues);
-        const padding = (maxY - minY) * 0.1; // 10% padding
-        
-        yScale.domain([minY - padding, maxY + padding]);
+        yScale.domain(calcAreaDomain());
         yLabel.html(`log<tspan dy="5" font-size="11px">10</tspan><tspan dy="-5">(area / arcmin</tspan><tspan dy="-6" font-size="11px">2</tspan><tspan dy="6">) @ z=${currentRedshift.toFixed(1)} (Δz=${currentDeltaZ.toFixed(1)})</tspan>`);
     }
-    
+
     yAxisG.transition().duration(500).call(yAxis);
     render();
 }
@@ -439,19 +442,7 @@ function updateYAxis(mode) {
 function updateRedshiftParams() {
     if (currentYMode === 'area') {
         yLabel.html(`log<tspan dy="5" font-size="11px">10</tspan><tspan dy="-5">(area / arcmin</tspan><tspan dy="-6" font-size="11px">2</tspan><tspan dy="6">) @ z=${currentRedshift.toFixed(1)} (Δz=${currentDeltaZ.toFixed(1)})</tspan>`);
-        
-        // Recalculate y-axis limits
-        const yValues = Object.values(simulations).map(sim => {
-            const volume = Math.pow(sim.size, 3);
-            const area = volumeToArea(volume, currentRedshift, currentDeltaZ);
-            return Math.log10(area);
-        });
-        
-        const minY = Math.min(...yValues);
-        const maxY = Math.max(...yValues);
-        const padding = (maxY - minY) * 0.1;
-        
-        yScale.domain([minY - padding, maxY + padding]);
+        yScale.domain(calcAreaDomain());
         yAxisG.transition().duration(500).call(yAxis);
         render();
     }
@@ -474,15 +465,26 @@ function defaultSimColor() {
         : '#333333';
 }
 
-// Colorscale for final redshift: white → orange → red
-const redshiftColorScale = d3.scaleLinear()
+// Colorscale for final redshift
+const redshiftColorScaleDark = d3.scaleLinear()
     .domain([0, 3, 6])
     .range(['#f0f0f0', '#ff8800', '#cc2200'])
     .clamp(true);
 
+const redshiftColorScaleBright = d3.scaleLinear()
+    .domain([0, 3, 6])
+    .range(['#000000', '#ff8800', '#cc2200'])
+    .clamp(true);
+
+function getRedshiftColorScale() {
+    return document.getElementById('dark-chart').checked
+        ? redshiftColorScaleBright
+        : redshiftColorScaleDark;
+}
+
 function simColor(sim) {
     if (sim.dmo) return 'purple';
-    return redshiftColorScale(sim.redshift_end ?? 0);
+    return getRedshiftColorScale()(sim.redshift_end ?? 0);
 }
 
 // Planck 2018: H0 = 67.66 km/s/Mpc, Ωm = 0.3111
@@ -609,23 +611,30 @@ function render() {
     if (showSurveys && currentYMode !== 'volume') {
         const z = currentYMode === 'area_z5' ? 5 : 7;
         const [yMin, yMax] = yScale.domain();
-        
+        // Legend occupies the top portion of the plot (y=0 to legendBottom)
+        const legendBottom = showLegend ? Math.min(height - 10, 360) : 0;
+
         Object.entries(surveys).forEach(([name, survey]) => {
             const y = Math.log10(survey.area);
-            
+
             // Only render if within y-axis limits
             if (y >= yMin && y <= yMax) {
+                const py = yScale(y);
+                // If the line is sufficiently below the legend, label goes right; otherwise left of legend
+                const belowLegend = !showLegend || py > legendBottom + 20;
+                const labelX = belowLegend ? width - 5 : width - 138;
+
                 surveyGroup.append('line')
                     .attr('class', 'survey-line')
                     .attr('x1', 0)
                     .attr('x2', width)
-                    .attr('y1', yScale(y))
-                    .attr('y2', yScale(y));
-                
+                    .attr('y1', py)
+                    .attr('y2', py);
+
                 surveyGroup.append('text')
                     .attr('class', 'survey-label')
-                    .attr('x', width - 5)
-                    .attr('y', yScale(y) - 3)
+                    .attr('x', labelX)
+                    .attr('y', py - 4)
                     .attr('text-anchor', 'end')
                     .text(name);
             }
@@ -749,7 +758,7 @@ function render() {
     allPoints.select('.highlight-star')
         .attr('d', d => {
             if (!d[1]['radiative-transfer']) return '';
-            return d3.symbol().type(d3.symbolStar).size(150)();
+            return d3.symbol().type(d3.symbolStar).size(80)();
         })
         .attr('stroke', d => simColor(d[1]))
         .attr('opacity', d => emojiActive(d) ? 0 : (d[1]['radiative-transfer'] ? 1 : 0));
@@ -862,17 +871,63 @@ function render() {
             .attr('class', 'legend-title')
             .text('Simulations');
 
-        filteredSims.forEach(([name], index) => {
+        // When zoomed, only list sims whose coordinates are within the current viewport
+        const [xA, xB] = xScale.domain();
+        const xLo = Math.min(xA, xB), xHi = Math.max(xA, xB);
+        const [yLo, yHi] = yScale.domain().slice().sort((a, b) => a - b);
+        const legendSims = isZoomed
+            ? filteredSims.filter(([, sim]) => {
+                const xv = Math.log10(getResolutionMass(sim));
+                const yv = getYValue(sim);
+                return xv >= xLo && xv <= xHi && yv >= yLo && yv <= yHi;
+            })
+            : filteredSims;
+
+        legendSims.forEach(([name, sim]) => {
+            const num = simNumberMap.get(name);
+            const isActive = stickyData && stickyData[0] === name;
             const entry = legendDiv.append('div')
-                .attr('class', 'legend-entry');
+                .attr('class', isActive ? 'legend-entry legend-entry-active' : 'legend-entry');
 
             entry.append('span')
                 .attr('class', 'legend-number')
-                .text(`${index + 1}.`);
+                .text(`${num}.`);
 
             entry.append('span')
                 .attr('class', 'legend-name')
                 .text(name);
+
+            entry.on('click', function(event) {
+                event.stopPropagation();
+                const d = filteredSims.find(([n]) => n === name);
+                const pts = simGroup.selectAll('.sim-point');
+                if (stickyData && stickyData[0] === d[0]) {
+                    stickyData = null;
+                    tooltip.classed('visible', false).classed('sticky', false)
+                        .style('pointer-events', 'none');
+                    pts.transition().duration(200)
+                        .attr('transform', p => `translate(${xScale(Math.log10(getResolutionMass(p[1])))},${yScale(getYValue(p[1]))}) scale(1)`);
+                } else {
+                    stickyData = d;
+                    pts.filter(p => p[0] !== stickyData[0]).transition().duration(200)
+                        .attr('transform', p => `translate(${xScale(Math.log10(getResolutionMass(p[1])))},${yScale(getYValue(p[1]))}) scale(1)`);
+                    pts.filter(p => p[0] === stickyData[0]).transition().duration(200)
+                        .attr('transform', p => `translate(${xScale(Math.log10(getResolutionMass(p[1])))},${yScale(getYValue(p[1]))}) scale(1.5)`);
+                    tooltip.html(buildTooltipHTML(d, true))
+                        .classed('visible', true).classed('sticky', true)
+                        .style('pointer-events', 'auto');
+                    const svgRect = svg.node().getBoundingClientRect();
+                    positionTooltip({
+                        pageX: svgRect.left + margin.left + xScale(Math.log10(getResolutionMass(d[1]))) + window.scrollX,
+                        pageY: svgRect.top + margin.top + yScale(getYValue(d[1])) + window.scrollY,
+                    });
+                }
+                // Update legend active classes directly — avoids a full render() which would reset the enlargement
+                document.querySelectorAll('.legend-entry').forEach((node, i) => {
+                    const entryName = legendSims[i] ? legendSims[i][0] : null;
+                    node.classList.toggle('legend-entry-active', !!(stickyData && stickyData[0] === entryName));
+                });
+            });
         });
     }
 
@@ -1377,7 +1432,7 @@ function resizeChart() {
     xLabel.attr('x', width / 2).attr('y', height + 55);
     yLabel.attr('x', -height / 2);
     topLabel.attr('x', width / 2);
-    yearDisplayText.attr('x', width - 8).attr('y', 80);
+    yearDisplayText.attr('x', width * 0.62).attr('y', 80);
 
     render();
 }
@@ -1390,10 +1445,15 @@ function refreshAxes() {
     yAxisRightG.call(d3.axisRight(yScale).tickValues([]));
 }
 
+function getDefaultYDomain() {
+    if (currentYMode === 'volume') return [2.5, 12];
+    return calcAreaDomain();
+}
+
 function resetZoom() {
     if (!isZoomed) return;
     xScale.domain(DEFAULT_X_DOMAIN);
-    yScale.domain(DEFAULT_Y_DOMAIN);
+    yScale.domain(getDefaultYDomain());
     xScaleTop.domain([
         calcStellarMassLimit(Math.pow(10, DEFAULT_X_DOMAIN[0])),
         calcStellarMassLimit(Math.pow(10, DEFAULT_X_DOMAIN[1]))
@@ -1528,14 +1588,8 @@ document.getElementById('reset-all').addEventListener('click', () => {
     tooltip.classed('visible', false).classed('sticky', false).style('pointer-events', 'none');
 
     // Reset zoom
-    xScale.domain(DEFAULT_X_DOMAIN);
-    yScale.domain(DEFAULT_Y_DOMAIN);
-    xScaleTop.domain([
-        calcStellarMassLimit(Math.pow(10, DEFAULT_X_DOMAIN[0])),
-        calcStellarMassLimit(Math.pow(10, DEFAULT_X_DOMAIN[1]))
-    ]);
-    isZoomed = false;
-    refreshAxes();
+    isZoomed = true; // ensure resetZoom runs
+    resetZoom();
 
     render();
 });

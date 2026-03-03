@@ -98,7 +98,7 @@ body.sidebar-open .main-content {
 }
 
 .sidebar-title {
-    font-size: 18px;
+    font-size: 24px;
     font-weight: 700;
     color: var(--text-color);
     letter-spacing: 0.01em;
@@ -151,6 +151,13 @@ body.sidebar-open .main-content {
 .section-content {
     max-height: none;
     overflow: visible;
+}
+
+#about-content {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-muted);
+    padding-bottom: 4px;
 }
 
 .section-content.collapsed {
@@ -351,7 +358,7 @@ svg {
 }
 
 .survey-label {
-    font-size: 9px;
+    font-size: 12px;
     fill: var(--chart-text-muted);
     opacity: 0.8;
 }
@@ -412,6 +419,23 @@ svg {
     gap: 4px;
     margin-bottom: 2px;
     line-height: 1.25;
+    cursor: pointer;
+    border-radius: 3px;
+    padding: 1px 3px;
+    margin-left: -3px;
+}
+
+.legend-entry:hover {
+    background: var(--chart-panel-border);
+}
+
+.legend-entry-active {
+    background: var(--chart-panel-border);
+}
+
+.legend-entry-active .legend-name {
+    font-weight: 600;
+    color: var(--text-color);
 }
 
 .legend-number {
@@ -488,6 +512,10 @@ svg {
     background: linear-gradient(to right, #f0f0f0, #ff8800, #cc2200);
     border-radius: 2px;
     border: 1px solid rgba(128, 128, 128, 0.3);
+}
+
+.chart-container:not(.dark) .colorbar-gradient {
+    background: linear-gradient(to right, #000000, #ff8800, #cc2200);
 }
 
 .colorbar-ticks {
