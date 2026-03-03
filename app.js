@@ -180,9 +180,17 @@ Object.entries(simulationSuites).forEach(([suiteName, sims]) => {
     });
 });
 
+const YEAR_MIN = 1990;
+const YEAR_MAX = new Date().getFullYear();
+
 let currentYMode = 'volume';
 let currentRedshift = 7.0;
 let currentDeltaZ = 1.0;
+let currentMaxRedshiftEnd = 20.0;
+let currentMinYear = YEAR_MIN;
+let currentMaxYear = YEAR_MAX;
+let animationId = null;
+let isAnimating = false;
 
 function updateYAxis(mode) {
     currentYMode = mode;
@@ -298,6 +306,12 @@ function render() {
         if (!filterHydro && !sim.dmo) return false;
         if (!filterDMO && sim.dmo) return false;
 
+        // Check final redshift filter
+        if (sim.redshift_end > currentMaxRedshiftEnd) return false;
+
+        // Check publication year filter
+        if (sim.year !== undefined && (sim.year < currentMinYear || sim.year > currentMaxYear)) return false;
+
         // Must be in selected individual sims
         return selectedSims.includes(name);
     });
@@ -360,6 +374,10 @@ function render() {
         });
 
     pointsEnter.append('circle')
+        .attr('class', 'suite-ring')
+        .attr('r', 9);
+
+    pointsEnter.append('circle')
         .attr('class', 'main-circle')
         .attr('r', 5);
 
@@ -408,6 +426,10 @@ function render() {
 
     const allPoints = pointsEnter.merge(points);
 
+    allPoints.select('.suite-ring')
+        .attr('stroke', d => d[1].dmo ? 'purple' : (d[1].highlight || defaultSimColor()))
+        .attr('opacity', d => d[1].suite ? (d[1].complete ? 1 : 0.3) : 0);
+
     allPoints.select('.main-circle')
         .attr('fill', d => d[1].dmo ? 'purple' : (d[1].highlight || defaultSimColor()))
         .attr('opacity', d => d[1].complete ? 1 : 0.3);
@@ -444,7 +466,8 @@ function render() {
         details += `Box size: ${sim.size.toFixed(1)} cMpc<br>`;
         details += `Volume: ${volume.toExponential(2)} cMpc³<br>`;
         if (sim['radiative-transfer']) details += `Radiative Transfer: Yes<br>`;
-        details += `Redshift end: z=${sim.redshift_end}`;
+        details += `Redshift end: z=${sim.redshift_end}<br>`;
+        if (sim.year !== undefined) details += `Published: ${sim.year}`;
         
         // Get the position of the chart container
         const chartContainer = document.querySelector('.chart-container');
@@ -524,97 +547,23 @@ function render() {
         const keyDiv = keyBox.append('xhtml:div')
             .attr('class', 'icon-key');
 
-        keyDiv.append('div')
-            .attr('class', 'icon-key-title')
-            .text('Icon Key');
-
-        // Periodic (dot)
-        const periodicItem = keyDiv.append('div')
+        // Hydrodynamic (default dot)
+        const hydroItem = keyDiv.append('div')
             .attr('class', 'icon-key-item');
 
-        const periodicSvg = periodicItem.append('svg')
+        const hydroSvg = hydroItem.append('svg')
             .attr('width', 20)
             .attr('height', 20);
 
-        periodicSvg.append('circle')
+        hydroSvg.append('circle')
             .attr('cx', 10)
             .attr('cy', 10)
             .attr('r', 5)
             .attr('class', 'icon-key-fill');
 
-        periodicItem.append('span')
+        hydroItem.append('span')
             .attr('class', 'icon-key-label')
-            .text('Periodic');
-
-        // Radiative Transfer (circle with dot)
-        const rtItem = keyDiv.append('div')
-            .attr('class', 'icon-key-item');
-
-        const rtSvg = rtItem.append('svg')
-            .attr('width', 20)
-            .attr('height', 20);
-
-        rtSvg.append('circle')
-            .attr('cx', 10)
-            .attr('cy', 10)
-            .attr('r', 5)
-            .attr('class', 'icon-key-fill');
-
-        rtSvg.append('path')
-            .attr('d', d3.symbol().type(d3.symbolStar).size(100)())
-            .attr('transform', 'translate(10,10)')
-            .attr('fill', 'none')
-            .attr('class', 'icon-key-stroke')
-            .attr('stroke-width', 2);
-
-        rtItem.append('span')
-            .attr('class', 'icon-key-label')
-            .text('Radiative Transfer');
-
-        // Simulation Suite (red dot)
-        const suiteItem = keyDiv.append('div')
-            .attr('class', 'icon-key-item');
-
-        const suiteSvg = suiteItem.append('svg')
-            .attr('width', 20)
-            .attr('height', 20);
-
-        suiteSvg.append('circle')
-            .attr('cx', 10)
-            .attr('cy', 10)
-            .attr('r', 5)
-            .attr('fill', 'red');
-
-        suiteItem.append('span')
-            .attr('class', 'icon-key-label')
-            .text('Simulation Suite');
-
-        // Zoom Suite (star)
-        const zoomItem = keyDiv.append('div')
-            .attr('class', 'icon-key-item');
-
-        const zoomSvg = zoomItem.append('svg')
-            .attr('width', 20)
-            .attr('height', 20);
-
-        zoomSvg.append('circle')
-            .attr('cx', 10)
-            .attr('cy', 10)
-            .attr('r', 5)
-            .attr('class', 'icon-key-fill');
-
-        zoomSvg.append('rect')
-            .attr('x', 2)
-            .attr('y', 2)
-            .attr('width', 16)
-            .attr('height', 16)
-            .attr('fill', 'none')
-            .attr('class', 'icon-key-stroke')
-            .attr('stroke-width', 1.5);
-
-        zoomItem.append('span')
-            .attr('class', 'icon-key-label')
-            .text('Zoom Suite');
+            .text('Hydrodynamic');
 
         // High Redshift (green dot)
         const highzItem = keyDiv.append('div')
@@ -651,6 +600,87 @@ function render() {
         dmoItem.append('span')
             .attr('class', 'icon-key-label')
             .text('Dark Matter Only');
+
+        keyDiv.append('div')
+            .attr('class', 'icon-key-divider');
+
+        // Simulation Suite (dot with surrounding circle)
+        const suiteItem = keyDiv.append('div')
+            .attr('class', 'icon-key-item');
+
+        const suiteSvg = suiteItem.append('svg')
+            .attr('width', 20)
+            .attr('height', 20);
+
+        suiteSvg.append('circle')
+            .attr('cx', 10)
+            .attr('cy', 10)
+            .attr('r', 9)
+            .attr('fill', 'none')
+            .attr('class', 'icon-key-stroke')
+            .attr('stroke-width', 1.5);
+
+        suiteSvg.append('circle')
+            .attr('cx', 10)
+            .attr('cy', 10)
+            .attr('r', 5)
+            .attr('class', 'icon-key-fill');
+
+        suiteItem.append('span')
+            .attr('class', 'icon-key-label')
+            .text('Simulation Suite');
+
+        // Radiative Transfer (star)
+        const rtItem = keyDiv.append('div')
+            .attr('class', 'icon-key-item');
+
+        const rtSvg = rtItem.append('svg')
+            .attr('width', 20)
+            .attr('height', 20);
+
+        rtSvg.append('circle')
+            .attr('cx', 10)
+            .attr('cy', 10)
+            .attr('r', 5)
+            .attr('class', 'icon-key-fill');
+
+        rtSvg.append('path')
+            .attr('d', d3.symbol().type(d3.symbolStar).size(100)())
+            .attr('transform', 'translate(10,10)')
+            .attr('fill', 'none')
+            .attr('class', 'icon-key-stroke')
+            .attr('stroke-width', 2);
+
+        rtItem.append('span')
+            .attr('class', 'icon-key-label')
+            .text('Radiative Transfer');
+
+        // Zoom Suite (box)
+        const zoomItem = keyDiv.append('div')
+            .attr('class', 'icon-key-item');
+
+        const zoomSvg = zoomItem.append('svg')
+            .attr('width', 20)
+            .attr('height', 20);
+
+        zoomSvg.append('circle')
+            .attr('cx', 10)
+            .attr('cy', 10)
+            .attr('r', 5)
+            .attr('class', 'icon-key-fill');
+
+        zoomSvg.append('rect')
+            .attr('x', 2)
+            .attr('y', 2)
+            .attr('width', 16)
+            .attr('height', 16)
+            .attr('fill', 'none')
+            .attr('class', 'icon-key-stroke')
+            .attr('stroke-width', 1.5);
+
+        zoomItem.append('span')
+            .attr('class', 'icon-key-label')
+            .text('Zoom Simulation');
     }
 }
 
@@ -739,6 +769,100 @@ document.getElementById('dz-slider').addEventListener('input', (e) => {
     document.getElementById('dz-value').textContent = currentDeltaZ.toFixed(1);
     updateRedshiftParams();
 });
+
+document.getElementById('finalz-slider').addEventListener('input', (e) => {
+    currentMaxRedshiftEnd = parseFloat(e.target.value);
+    document.getElementById('finalz-value').textContent = currentMaxRedshiftEnd.toFixed(1);
+    render();
+});
+
+// ── Publication year filter ───────────────────────────────────────
+function updateYearUI() {
+    const range = YEAR_MAX - YEAR_MIN;
+    document.getElementById('year-fill').style.left  = ((currentMinYear - YEAR_MIN) / range * 100) + '%';
+    document.getElementById('year-fill').style.right = ((YEAR_MAX - currentMaxYear) / range * 100) + '%';
+    document.getElementById('year-min-value').textContent = currentMinYear;
+    document.getElementById('year-max-value').textContent = currentMaxYear;
+    document.getElementById('year-min').value = currentMinYear;
+    document.getElementById('year-max').value = currentMaxYear;
+    // Keep the draggable thumb accessible at the boundary
+    const atMax = currentMinYear >= YEAR_MAX - 1;
+    document.getElementById('year-min').style.zIndex = atMax ? 5 : 4;
+    document.getElementById('year-max').style.zIndex = atMax ? 4 : 5;
+}
+
+// Initialise slider max to current year
+document.getElementById('year-min').max = YEAR_MAX;
+document.getElementById('year-max').max = YEAR_MAX;
+document.getElementById('year-max').value = YEAR_MAX;
+updateYearUI();
+
+document.getElementById('year-min').addEventListener('input', e => {
+    currentMinYear = Math.min(parseInt(e.target.value), currentMaxYear);
+    e.target.value = currentMinYear;
+    updateYearUI();
+    render();
+});
+
+document.getElementById('year-max').addEventListener('input', e => {
+    currentMaxYear = Math.max(parseInt(e.target.value), currentMinYear);
+    e.target.value = currentMaxYear;
+    updateYearUI();
+    render();
+});
+
+const ANIM_STEP_MS = 400;
+
+function startAnimation() {
+    if (!isAnimating) {
+        // Fresh start — always begin from YEAR_MIN
+        currentMinYear = YEAR_MIN;
+        currentMaxYear = YEAR_MIN;
+        isAnimating = true;
+        updateYearUI();
+        render();
+    }
+    document.getElementById('year-play').textContent = '⏸';
+
+    function step() {
+        currentMaxYear = Math.min(currentMaxYear + 1, YEAR_MAX);
+        updateYearUI();
+        render();
+        if (currentMaxYear >= YEAR_MAX) {
+            animationId = null;
+            isAnimating = false;
+            document.getElementById('year-play').textContent = '▶';
+            return;
+        }
+        animationId = setTimeout(step, ANIM_STEP_MS);
+    }
+    animationId = setTimeout(step, ANIM_STEP_MS);
+}
+
+function pauseAnimation() {
+    clearTimeout(animationId);
+    animationId = null;
+    document.getElementById('year-play').textContent = '▶';
+}
+
+function resetAnimation() {
+    pauseAnimation();
+    isAnimating = false;
+    currentMinYear = YEAR_MIN;
+    currentMaxYear = YEAR_MAX;
+    updateYearUI();
+    render();
+}
+
+document.getElementById('year-play').addEventListener('click', () => {
+    if (animationId !== null) {
+        pauseAnimation();
+    } else {
+        startAnimation();
+    }
+});
+
+document.getElementById('year-stop').addEventListener('click', resetAnimation);
 
 document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #filter-periodic, #filter-zoom, #filter-rt, #filter-hydro, #filter-dmo').forEach(cb => {
     cb.addEventListener('change', render);
