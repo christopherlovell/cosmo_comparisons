@@ -715,8 +715,7 @@ function render() {
         .attr('width', 20).attr('height', 20);
 
     pointsEnter.append('text')
-        .attr('class', 'point-label')
-        .attr('dy', -10);
+        .attr('class', 'point-label');
 
     // Animate new points with blob effect
     pointsEnter.transition()
@@ -819,6 +818,55 @@ function render() {
     allPoints.select('.point-label')
         .text(d => showLegend ? simNumberMap.get(d[0]) : '')
         .attr('opacity', showLegend ? 1 : 0);
+
+    // Light-touch label repositioning to reduce overlaps
+    if (showLegend) {
+        const defaultOy = -10;
+        const charW = 6, labelH = 10, pad = 2;
+
+        const labels = filteredSims.map(([name, sim]) => {
+            const w = String(simNumberMap.get(name) || '').length * charW + 3;
+            return {
+                name,
+                px: xScale(Math.log10(getResolutionMass(sim))),
+                py: yScale(getYValue(sim)),
+                ox: 0, oy: defaultOy, w, h: labelH,
+            };
+        });
+
+        for (let iter = 0; iter < 40; iter++) {
+            for (let i = 0; i < labels.length; i++) {
+                for (let j = i + 1; j < labels.length; j++) {
+                    const a = labels[i], b = labels[j];
+                    const overlapX = (a.w + b.w) / 2 + pad - Math.abs((a.px + a.ox) - (b.px + b.ox));
+                    const overlapY = (a.h + b.h) / 2 + pad - Math.abs((a.py + a.oy) - (b.py + b.oy));
+                    if (overlapX > 0 && overlapY > 0) {
+                        const push = Math.min(overlapX, overlapY) * 0.5;
+                        if (overlapY <= overlapX) {
+                            const sign = (a.py + a.oy) <= (b.py + b.oy) ? -1 : 1;
+                            a.oy += sign * push; b.oy -= sign * push;
+                        } else {
+                            const sign = (a.px + a.ox) <= (b.px + b.ox) ? -1 : 1;
+                            a.ox += sign * push; b.ox -= sign * push;
+                        }
+                    }
+                }
+            }
+            // Spring back toward default position
+            labels.forEach(l => {
+                l.ox += (0        - l.ox) * 0.1;
+                l.oy += (defaultOy - l.oy) * 0.1;
+            });
+        }
+
+        const ptSel = simGroup.selectAll('.sim-point');
+        labels.forEach(l => {
+            ptSel.filter(d => d[0] === l.name)
+                .select('.point-label')
+                .attr('x', l.ox)
+                .attr('y', l.oy);
+        });
+    }
 
     allPoints.on('mouseover', function(event, d) {
         playSimSound(d[1]);
