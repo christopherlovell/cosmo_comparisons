@@ -67,7 +67,7 @@ function areaToVolume(area_arcmin2, z_center, delta_z) {
 }
 
 // Chart dimensions — width/height are set dynamically by resizeChart()
-const margin = {top: 55, right: 140, bottom: 60, left: 70};
+const margin = {top: 55, right: 20, bottom: 60, left: 70};
 let width, height;
 
 const svg = d3.select('#chart');
@@ -141,42 +141,42 @@ const yearDisplayText = g.append('text')
     .style('opacity', 0);
 
 // Populate suite checkboxes
-const suiteCheckboxContainer = d3.select('#suite-checkboxes');
+const familyCheckboxContainer = d3.select('#family-checkboxes');
 
-Object.entries(simulationSuites).forEach(([suiteName, sims]) => {
-    const suiteGroup = suiteCheckboxContainer.append('div')
-        .attr('class', 'suite-group');
+Object.entries(simulationFamilies).forEach(([familyName, sims]) => {
+    const familyGroup = familyCheckboxContainer.append('div')
+        .attr('class', 'family-group');
 
-    const suiteHeader = suiteGroup.append('div')
-        .attr('class', 'suite-header')
-        .attr('data-suite', suiteName);
+    const familyHeader = familyGroup.append('div')
+        .attr('class', 'family-header')
+        .attr('data-family', familyName);
 
-    suiteHeader.append('span')
-        .attr('class', 'suite-toggle collapsed')
+    familyHeader.append('span')
+        .attr('class', 'family-toggle collapsed')
         .text('▼');
 
-    suiteHeader.append('input')
+    familyHeader.append('input')
         .attr('type', 'checkbox')
-        .attr('class', 'suite-checkbox')
-        .attr('data-suite', suiteName)
+        .attr('class', 'family-checkbox')
+        .attr('data-family', familyName)
         .property('checked', true);
 
-    suiteHeader.append('span')
-        .attr('class', 'suite-name')
-        .text(suiteName);
+    familyHeader.append('span')
+        .attr('class', 'family-name')
+        .text(familyName);
 
-    const suiteSimsContainer = suiteGroup.append('div')
-        .attr('class', 'suite-sims collapsed')
-        .attr('data-suite', suiteName);
+    const familySimsContainer = familyGroup.append('div')
+        .attr('class', 'family-sims collapsed')
+        .attr('data-family', familyName);
 
     Object.keys(sims).forEach(simName => {
-        const label = suiteSimsContainer.append('label')
+        const label = familySimsContainer.append('label')
             .attr('class', 'checkbox-item sim-item');
 
         label.append('input')
             .attr('type', 'checkbox')
             .attr('class', 'individual-sim')
-            .attr('data-suite', suiteName)
+            .attr('data-family', familyName)
             .attr('value', simName)
             .property('checked', true);
 
@@ -184,15 +184,28 @@ Object.entries(simulationSuites).forEach(([suiteName, sims]) => {
     });
 });
 
+// Populate numerical code checkboxes
+const codeCheckboxContainer = d3.select('#code-checkboxes');
+const allCodes = [...new Set(Object.values(simulations).map(s => s.code).filter(Boolean))].sort();
+allCodes.forEach(code => {
+    const label = codeCheckboxContainer.append('label').attr('class', 'checkbox-item');
+    label.append('input')
+        .attr('type', 'checkbox')
+        .attr('class', 'code-checkbox')
+        .attr('value', code)
+        .property('checked', true);
+    label.append('span').text(code);
+});
+
 // Reverse mapping: sim name → suite name, for emoji lookup
-const simToSuite = {};
-Object.entries(simulationSuites).forEach(([suiteName, sims]) => {
-    Object.keys(sims).forEach(simName => { simToSuite[simName] = suiteName; });
+const simToFamily = {};
+Object.entries(simulationFamilies).forEach(([familyName, sims]) => {
+    Object.keys(sims).forEach(simName => { simToFamily[simName] = familyName; });
 });
 
 function getSimEmoji(simName) {
-    const suite = simToSuite[simName];
-    return suite ? (suiteEmoji[suite] || null) : null;
+    const suite = simToFamily[simName];
+    return suite ? (familyEmoji[suite] || null) : null;
 }
 
 const YEAR_MIN = 1990;
@@ -259,8 +272,8 @@ function simTailLength(sim) {
 }
 
 function simPan(sim) {
-    // N_particles proxy = size³ / m_g — encodes both axes; few particles → left, many → right
-    const logN = Math.log10(Math.pow(sim.size, 3) / sim.m_g);
+    // N_particles proxy = size³ / m_particle — encodes both axes; few particles → left, many → right
+    const logN = Math.log10(Math.pow(sim.size, 3) / getResolutionMass(sim));
     const t = Math.max(0, Math.min(1, (logN + 1) / 4.5));  // range: logN ≈ -1 to 3.5
     return t * 2 - 1;   // -1 = hard left, +1 = hard right
 }
@@ -488,6 +501,10 @@ function render() {
     const selectedSims = Array.from(document.querySelectorAll('.individual-sim:checked'))
         .map(cb => cb.value);
 
+    const selectedCodes = new Set(
+        Array.from(document.querySelectorAll('.code-checkbox:checked')).map(cb => cb.value)
+    );
+
     const showSurveys = document.getElementById('show-surveys').checked;
     const showLegend = document.getElementById('show-legend').checked;
     const showIconKey = document.getElementById('show-icon-key').checked;
@@ -520,6 +537,9 @@ function render() {
 
         // Check publication year filter
         if (sim.year !== undefined && (sim.year < currentMinYear || sim.year > currentMaxYear)) return false;
+
+        // Code filter: only applies to sims that have a code assigned
+        if (sim.code && !selectedCodes.has(sim.code)) return false;
 
         // Must be in selected individual sims
         return selectedSims.includes(name);
@@ -783,14 +803,14 @@ function render() {
     legendGroup.selectAll('*').remove();
 
     if (showLegend && filteredSims.length > 0) {
-        const legendX = width + 10;
+        const legendX = width - 130;
         const legendY = 0;
 
         const legendBox = legendGroup.append('foreignObject')
             .attr('x', legendX)
             .attr('y', legendY)
-            .attr('width', 120)
-            .attr('height', height);
+            .attr('width', 122)
+            .attr('height', Math.min(height - 10, 360));
 
         const legendDiv = legendBox.append('xhtml:div')
             .attr('class', 'legend-box');
@@ -992,33 +1012,33 @@ function render() {
 }
 
 // Suite toggle functionality
-document.querySelectorAll('.suite-header').forEach(header => {
+document.querySelectorAll('.family-header').forEach(header => {
     header.addEventListener('click', (e) => {
         // Don't toggle if clicking on checkbox
-        if (e.target.classList.contains('suite-checkbox')) {
+        if (e.target.classList.contains('family-checkbox')) {
             return;
         }
 
-        const suiteName = header.getAttribute('data-suite');
-        const suiteSimsContainer = document.querySelector(`.suite-sims[data-suite="${suiteName}"]`);
-        const toggleIcon = header.querySelector('.suite-toggle');
+        const familyName = header.getAttribute('data-family');
+        const familySimsContainer = document.querySelector(`.family-sims[data-family="${familyName}"]`);
+        const toggleIcon = header.querySelector('.family-toggle');
 
-        if (suiteSimsContainer) {
-            suiteSimsContainer.classList.toggle('collapsed');
+        if (familySimsContainer) {
+            familySimsContainer.classList.toggle('collapsed');
             toggleIcon.classList.toggle('collapsed');
         }
     });
 });
 
-// Suite checkbox functionality - select/deselect all sims in suite
-document.querySelectorAll('.suite-checkbox').forEach(suiteCheckbox => {
-    suiteCheckbox.addEventListener('change', (e) => {
+// Family checkbox functionality - select/deselect all sims in family
+document.querySelectorAll('.family-checkbox').forEach(familyCheckbox => {
+    familyCheckbox.addEventListener('change', (e) => {
         e.stopPropagation(); // Prevent toggle when clicking checkbox
-        const suiteName = suiteCheckbox.getAttribute('data-suite');
-        const isChecked = suiteCheckbox.checked;
+        const familyName = familyCheckbox.getAttribute('data-family');
+        const isChecked = familyCheckbox.checked;
 
-        // Update all individual sim checkboxes in this suite
-        document.querySelectorAll(`.individual-sim[data-suite="${suiteName}"]`).forEach(simCheckbox => {
+        // Update all individual sim checkboxes in this family
+        document.querySelectorAll(`.individual-sim[data-family="${familyName}"]`).forEach(simCheckbox => {
             simCheckbox.checked = isChecked;
         });
 
@@ -1026,20 +1046,20 @@ document.querySelectorAll('.suite-checkbox').forEach(suiteCheckbox => {
     });
 });
 
-// Individual sim checkbox functionality - update suite checkbox state
+// Individual sim checkbox functionality - update family checkbox state
 document.querySelectorAll('.individual-sim').forEach(simCheckbox => {
     simCheckbox.addEventListener('change', () => {
-        const suiteName = simCheckbox.getAttribute('data-suite');
-        const suiteCheckbox = document.querySelector(`.suite-checkbox[data-suite="${suiteName}"]`);
+        const familyName = simCheckbox.getAttribute('data-family');
+        const familyCheckbox = document.querySelector(`.family-checkbox[data-family="${familyName}"]`);
 
-        // Check if all sims in suite are checked
-        const allSimsInSuite = document.querySelectorAll(`.individual-sim[data-suite="${suiteName}"]`);
-        const allChecked = Array.from(allSimsInSuite).every(cb => cb.checked);
-        const anyChecked = Array.from(allSimsInSuite).some(cb => cb.checked);
+        // Check if all sims in family are checked
+        const allSimsInFamily = document.querySelectorAll(`.individual-sim[data-family="${familyName}"]`);
+        const allChecked = Array.from(allSimsInFamily).every(cb => cb.checked);
+        const anyChecked = Array.from(allSimsInFamily).some(cb => cb.checked);
 
-        if (suiteCheckbox) {
-            suiteCheckbox.checked = allChecked;
-            suiteCheckbox.indeterminate = !allChecked && anyChecked;
+        if (familyCheckbox) {
+            familyCheckbox.checked = allChecked;
+            familyCheckbox.indeterminate = !allChecked && anyChecked;
         }
 
         render();
@@ -1183,6 +1203,28 @@ document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #show-em
     cb.addEventListener('change', render);
 });
 
+document.querySelectorAll('.code-checkbox').forEach(cb => cb.addEventListener('change', render));
+
+document.getElementById('codes-select-all').addEventListener('click', () => {
+    document.querySelectorAll('.code-checkbox').forEach(cb => { cb.checked = true; });
+    render();
+});
+
+document.getElementById('codes-clear-all').addEventListener('click', () => {
+    document.querySelectorAll('.code-checkbox').forEach(cb => { cb.checked = false; });
+    render();
+});
+
+document.getElementById('families-select-all').addEventListener('click', () => {
+    document.querySelectorAll('.family-checkbox, .individual-sim').forEach(cb => { cb.checked = true; });
+    render();
+});
+
+document.getElementById('families-clear-all').addEventListener('click', () => {
+    document.querySelectorAll('.family-checkbox, .individual-sim').forEach(cb => { cb.checked = false; });
+    render();
+});
+
 // ── Sound controls ───────────────────────────────────────────────
 document.getElementById('play-sounds').addEventListener('change', e => {
     document.getElementById('sound-controls').style.display = e.target.checked ? 'block' : 'none';
@@ -1311,13 +1353,19 @@ function resizeChart() {
 // ── Sidebar responsive behaviour ────────────────────────────────
 const MOBILE_BREAKPOINT = 768;
 
-// On mobile, start with sidebar hidden
+// On mobile, start with sidebar hidden and heavy overlays off
 if (window.innerWidth <= MOBILE_BREAKPOINT) {
     document.body.classList.remove('sidebar-open');
+    document.getElementById('show-icon-key').checked = false;
+    document.getElementById('show-legend').checked = false;
 }
 
 document.getElementById('sidebar-toggle').addEventListener('click', () => {
     document.body.classList.toggle('sidebar-open');
+});
+
+document.getElementById('mobile-warning-dismiss').addEventListener('click', () => {
+    document.getElementById('mobile-warning').style.display = 'none';
 });
 
 document.getElementById('sidebar-overlay').addEventListener('click', () => {

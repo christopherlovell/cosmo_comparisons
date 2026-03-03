@@ -1,17 +1,17 @@
 // Simulation suites - hierarchical structure
-const simulationSuites = {
+const simulationFamilies = {
     'EAGLE': {
-        'EAGLE-Ref': {size: 100, m_g: 1.81e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.446..521S'},
-        'EAGLE-Recal': {size: 25, m_g: 2.26e5, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.446..521S'}
+        'EAGLE-Ref': {size: 100, m_g: 1.81e6, code: 'Gadget-2', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.446..521S'},
+        'EAGLE-Recal': {size: 25, m_g: 2.26e5, code: 'Gadget-2', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2015, ads: 'https://ui.adsabs.harvard.edu/abs/2015MNRAS.446..521S'}
     },
     'IllustrisTNG': {
-        'TNG50': {size: 51.7, m_g: 8.5e4, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, mhd: true, year: 2019},
-        'TNG100': {size: 110.7, m_g: 1.4e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, mhd: true, year: 2018},
-        'TNG300': {size: 302.6, m_g: 1.1e7, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, mhd: true, year: 2018}
+        'TNG50': {size: 51.7, m_g: 8.5e4, code: 'Arepo', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, mhd: true, year: 2019},
+        'TNG100': {size: 110.7, m_g: 1.4e6, code: 'Arepo', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, mhd: true, year: 2018},
+        'TNG300': {size: 302.6, m_g: 1.1e7, code: 'Arepo', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, mhd: true, year: 2018}
     },
     'Illustris': {
         // Original Illustris (pre-TNG); box is 75 h^-1 Mpc with h=0.704
-        'Illustris-1': {size: 75/0.704, m_g: 1.26e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2014, ads: 'https://ui.adsabs.harvard.edu/abs/2014Natur.509..177V'}
+        'Illustris-1': {size: 75/0.704, m_g: 1.26e6, code: 'Arepo', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2014, ads: 'https://ui.adsabs.harvard.edu/abs/2014Natur.509..177V'}
     },
     'Simba': {
         'Simba-100': {size: 100/0.7, m_g: 1.82e7, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2019},
@@ -23,19 +23,19 @@ const simulationSuites = {
         'THESAN-2': {size: 95.5, m_g: 4.66e6, 'radiative-transfer': true, complete: true, redshift_end: 5.5, periodic: true, year: 2022}
     },
     'FLAMINGO': {
-        'FLAMINGO-L1_m8': {size: 1000, m_g: 1.34e8, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023},
-        'FLAMINGO-L1_m9': {size: 1000, m_g: 1.07e9, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023},
-        'FLAMINGO-L2p8_m9': {size: 2800, m_g: 1.07e9, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023}
+        'FLAMINGO-L1_m8': {size: 1000, m_g: 1.34e8, code: 'SWIFT', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023},
+        'FLAMINGO-L1_m9': {size: 1000, m_g: 1.07e9, code: 'SWIFT', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023},
+        'FLAMINGO-L2p8_m9': {size: 2800, m_g: 1.07e9, code: 'SWIFT', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023}
     },
     'MillenniumTNG': {
         'MTNG740': {size: 740, m_g: 7.63e7, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023},
         'MTNG185': {size: 185, m_g: 2.98e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2023}
     },
     'COLIBRE': {
-        'COLIBRE-50': {size: 50, m_g: 2.3e5, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2025},
-        'COLIBRE-100': {size: 100, m_g: 1.84e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2025},
-        'COLIBRE-200': {size: 200, m_g: 1.84e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2025},
-        'COLIBRE-400': {size: 400, m_g: 1.47e7, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2025}
+        'COLIBRE-50': {size: 50, m_g: 2.3e5, code: 'SWIFT', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2025},
+        'COLIBRE-100': {size: 100, m_g: 1.84e6, code: 'SWIFT', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2025},
+        'COLIBRE-200': {size: 200, m_g: 1.84e6, code: 'SWIFT', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2025},
+        'COLIBRE-400': {size: 400, m_g: 1.47e7, code: 'SWIFT', 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2025}
     },
     'MassiveBlack': {
         // Masses in h^-1 M_sun converted with h=0.7; box in h^-1 Mpc / 0.7
@@ -122,7 +122,7 @@ const simulationSuites = {
 
 // Optional emoji per suite. Value is a Unicode emoji string, or a PNG filename
 // loaded from the emoji/ folder (e.g. 'colibre.png'). Omit a suite to use default markers.
-const suiteEmoji = {
+const familyEmoji = {
     'EAGLE':         '🦅',
     'IllustrisTNG':  'picard.png',
     'Illustris':     '🎆',
@@ -142,7 +142,7 @@ const suiteEmoji = {
 
 // Flatten simulations for backward compatibility
 const simulations = {};
-Object.entries(simulationSuites).forEach(([suite, sims]) => {
+Object.entries(simulationFamilies).forEach(([suite, sims]) => {
     Object.entries(sims).forEach(([name, data]) => {
         simulations[name] = data;
     });

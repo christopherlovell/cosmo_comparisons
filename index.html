@@ -11,21 +11,10 @@
 </head>
 <body class="sidebar-open">
     <div class="container">
-        <div class="header">
-            <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle controls">
-                <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-                    <line x1="0" y1="1" x2="18" y2="1"/>
-                    <line x1="0" y1="7" x2="18" y2="7"/>
-                    <line x1="0" y1="13" x2="18" y2="13"/>
-                </svg>
-            </button>
-            <h1>Cosmo Comparisons</h1>
-            <p class="subtitle">Interactive visualization of cosmological simulations on the mass resolution -- volume plane</p>
-        </div>
-        
         <div class="main-content">
             <div class="sidebar">
                 <div class="sidebar-inner">
+                <div class="sidebar-title">Cosmo Comparisons</div>
                 <div class="control-section">
                     <h3 class="section-header" data-section="about">
                         <span class="toggle-icon collapsed">▼</span>
@@ -171,7 +160,7 @@
                             </label>
                             <label class="checkbox-item">
                                 <input type="checkbox" id="show-emojis">
-                                <span>Show Suite Emojis</span>
+                                <span>Show Family Emojis</span>
                             </label>
                             <label class="checkbox-item">
                                 <input type="checkbox" id="dark-chart">
@@ -217,12 +206,32 @@
                 </div>
 
                 <div class="control-section">
+                    <h3 class="section-header" data-section="codes">
+                        <span class="toggle-icon collapsed">▼</span>
+                        Numerical Codes
+                    </h3>
+                    <div class="section-content collapsed" id="codes-content">
+                        <div class="select-clear-btns">
+                            <button id="codes-select-all" class="clear-btn">Select all</button>
+                            <button id="codes-clear-all" class="clear-btn">Clear all</button>
+                        </div>
+                        <div class="checkbox-group" id="code-checkboxes">
+                            <!-- Will be populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-section">
                     <h3 class="section-header" data-section="sims">
                         <span class="toggle-icon collapsed">▼</span>
-                        Simulation Suites
+                        Simulation Families
                     </h3>
                     <div class="section-content collapsed" id="sims-content">
-                        <div id="suite-checkboxes">
+                        <div class="select-clear-btns">
+                            <button id="families-select-all" class="clear-btn">Select all</button>
+                            <button id="families-clear-all" class="clear-btn">Clear all</button>
+                        </div>
+                        <div id="family-checkboxes">
                             <!-- Will be populated dynamically -->
                         </div>
                     </div>
@@ -243,6 +252,21 @@
                 <div class="tooltip"></div>
             </div>
             <div class="sidebar-overlay" id="sidebar-overlay"></div>
+        </div>
+    </div>
+
+    <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle controls">
+        <svg width="18" height="14" viewBox="0 0 18 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="0" y1="1" x2="18" y2="1"/>
+            <line x1="0" y1="7" x2="18" y2="7"/>
+            <line x1="0" y1="13" x2="18" y2="13"/>
+        </svg>
+    </button>
+
+    <div class="mobile-warning" id="mobile-warning">
+        <div class="mobile-warning-box">
+            <p>Cosmo Comparisons is designed for desktop use and may not display correctly on small screens.</p>
+            <button id="mobile-warning-dismiss">Continue anyway</button>
         </div>
     </div>
 
