@@ -56,11 +56,13 @@ const simulationSuites = {
         'CAMELS-1': {size: 25/0.7, m_g: 2e7, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, suite: true, year: 2021},
         'CAMELS-2': {size: 50/0.7, m_g: 2e7, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, suite: true, year: 2021}
     },
+    'FLARES': {
+        'FLARES': {size: 14.28, m_g: 1.81e6, 'radiative-transfer': false, complete: true, redshift_end: 5.0, periodic: false, highlight: 'green', star: true, year: 2021},
+    },
     'Individual': {
         'Horizon-AGN': {size: 120, m_g: 4e6, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2014, ads: 'https://ui.adsabs.harvard.edu/abs/2014MNRAS.444.1453D'},
         'BAHAMAS': {size: 560, m_g: 1.5e9, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2017},
         'SPHINX': {size: 20, m_g: 3.8e4, 'radiative-transfer': true, complete: true, redshift_end: 4.6, periodic: true, year: 2018},
-        'FLARES': {size: 14.28, m_g: 1.81e6, 'radiative-transfer': false, complete: true, redshift_end: 5.0, periodic: false, highlight: 'green', star: true, year: 2021},
         'FRONTIER-E': {size: 4700, m_g: 1e8, 'radiative-transfer': false, complete: true, redshift_end: 0.0, periodic: true, year: 2025, ads: 'https://arxiv.org/abs/2510.03557'}
     },
     'FIREbox': {
@@ -126,6 +128,7 @@ const suiteEmoji = {
     'Illustris':     '🎆',
     'Simba':         '🦁',
     'FLAMINGO':      '🦩',
+    'FLARES':        '👖',
     'MillenniumTNG': '🎆',
     'COLIBRE':       '🐦',
     'MassiveBlack':  '🖤',

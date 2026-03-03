@@ -208,6 +208,124 @@ let animationId = null;
 let isAnimating = false;
 let stickyData = null;
 
+// ── Audio engine ─────────────────────────────────────────────────
+let audioCtx = null;
+let masterGain = null;
+let soundGain = 0.3;
+let soundPitchShift = 0;   // octaves
+let soundTailScale = 1.0;
+const soundCooldowns = new Map(); // sim object → last-played timestamp (ms)
+
+function getAudioCtx() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioCtx.createGain();
+        masterGain.connect(audioCtx.destination);
+    }
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+}
+
+// Snap a frequency to the nearest note of the A major pentatonic scale
+// (A, B, C#, E, F#  →  semitone offsets from A: 0, 2, 4, 7, 9)
+function snapToPentatonic(freq) {
+    const penta = [0, 2, 4, 7, 9, 12]; // include octave-wrap sentinel
+    const semiF = 12 * Math.log2(freq / 440); // semitones from A4
+    const octave = Math.floor(semiF / 12);
+    const pos = semiF - octave * 12;          // position within octave (0–12)
+    let best = 0, bestDist = Infinity;
+    for (const p of penta) {
+        const d = Math.abs(pos - p);
+        if (d < bestDist) { bestDist = d; best = p; }
+    }
+    const finalSemi = best === 12 ? (octave + 1) * 12 : octave * 12 + best;
+    return 440 * Math.pow(2, finalSemi / 12);
+}
+
+function simFrequency(sim) {
+    // High resolution (low mass) → high pitch; low resolution → low pitch
+    // Maps log10(mass) linearly across 3 octaves: ~1600 Hz (low mass) → ~200 Hz (high mass)
+    const logMass = Math.log10(getResolutionMass(sim));
+    const t = Math.max(0, Math.min(1, (logMass - 3.8) / (12.2 - 3.8)));
+    const baseFreq = 1600 * Math.pow(2, -3 * t);
+    return snapToPentatonic(baseFreq * Math.pow(2, soundPitchShift));
+}
+
+function simTailLength(sim) {
+    // Large volume → long tail; small volume → short tail
+    const logVol = Math.log10(Math.pow(sim.size, 3));
+    const t = Math.max(0, Math.min(1, (logVol - 3) / (12 - 3)));
+    return (0.4 + 2.6 * t) * soundTailScale;
+}
+
+function simPan(sim) {
+    // N_particles proxy = size³ / m_g — encodes both axes; few particles → left, many → right
+    const logN = Math.log10(Math.pow(sim.size, 3) / sim.m_g);
+    const t = Math.max(0, Math.min(1, (logN + 1) / 4.5));  // range: logN ≈ -1 to 3.5
+    return t * 2 - 1;   // -1 = hard left, +1 = hard right
+}
+
+function simReverbMix(sim) {
+    // Large volume → spacious reverb; small volume → dry
+    const logVol = Math.log10(Math.pow(sim.size, 3));
+    return Math.max(0, Math.min(1, (logVol - 3) / (12 - 3)));
+}
+
+function playSimSound(sim) {
+    if (!document.getElementById('play-sounds').checked) return;
+    const now = Date.now();
+    if (now - (soundCooldowns.get(sim) || 0) < 1000) return;
+    soundCooldowns.set(sim, now);
+    try {
+        const ctx = getAudioCtx();
+        const freq = simFrequency(sim);
+        const tail = simTailLength(sim);
+        const pan = simPan(sim);
+        const mix = simReverbMix(sim);
+        const t = ctx.currentTime;
+
+        // Stereo panner — encodes particle count (both axes combined)
+        const panner = ctx.createStereoPanner();
+        panner.pan.value = pan;
+        panner.connect(masterGain);
+
+        // Feedback delay reverb — encodes volume (spaciousness of the simulation box)
+        const delay = ctx.createDelay(0.12);
+        const fbGain = ctx.createGain();
+        const dryGain = ctx.createGain();
+        const wetGain = ctx.createGain();
+        delay.delayTime.value = 0.02 + mix * 0.07;  // 20–90 ms room size
+        fbGain.gain.value = mix * 0.62;              // 0 = no echo, 0.62 = long decay
+        dryGain.gain.value = 1 - mix * 0.45;
+        wetGain.gain.value = mix * 0.45;
+        delay.connect(fbGain); fbGain.connect(delay);   // feedback loop
+        delay.connect(wetGain);
+        dryGain.connect(panner);
+        wetGain.connect(panner);
+        // Break feedback loop after reverb tail to allow GC
+        setTimeout(() => fbGain.disconnect(), (tail + 3) * 1000);
+
+        function makeOsc(freqHz, gain, decayTime) {
+            const osc = ctx.createOscillator();
+            const env = ctx.createGain();
+            osc.connect(env);
+            env.connect(dryGain);
+            env.connect(delay);
+            osc.type = 'sine';
+            osc.frequency.value = freqHz;
+            env.gain.setValueAtTime(gain, t);
+            env.gain.exponentialRampToValueAtTime(0.001, t + decayTime);
+            osc.start(t); osc.stop(t + decayTime + 0.05);
+        }
+
+        makeOsc(freq, soundGain, tail);
+        makeOsc(freq * 2.756, soundGain * 0.45, tail * 0.55);
+
+    } catch (e) {
+        console.warn('Audio error:', e);
+    }
+}
+
 function buildTooltipHTML(d, includeLink) {
     const [name, sim] = d;
     const volume = Math.pow(sim.size, 3);
@@ -537,6 +655,16 @@ function render() {
             return `translate(${x},${y}) scale(1)`;
         });
 
+    svg.on('click', function() {
+        if (stickyData) {
+            stickyData = null;
+            tooltip.classed('visible', false).classed('sticky', false)
+                .style('pointer-events', 'none');
+            allPoints.transition().duration(200)
+                .attr('transform', p => `translate(${xScale(Math.log10(getResolutionMass(p[1])))},${yScale(getYValue(p[1]))}) scale(1)`);
+        }
+    });
+
     const allPoints = pointsEnter.merge(points);
 
     allPoints.select('.mhd-field')
@@ -594,26 +722,55 @@ function render() {
         .attr('opacity', showLegend ? 1 : 0);
 
     allPoints.on('mouseover', function(event, d) {
+        playSimSound(d[1]);
+        
+        // Growth animation
+        d3.select(this).transition().duration(200)
+            .attr('transform', `translate(${xScale(Math.log10(getResolutionMass(d[1])))},${yScale(getYValue(d[1]))}) scale(1.5)`);
+
         if (stickyData) return;
         tooltip.html(buildTooltipHTML(d, false))
             .classed('visible', true)
             .style('pointer-events', 'none');
         positionTooltip(event);
     })
-    .on('mouseout', function() {
+    .on('mouseout', function(event, d) {
+        // Only shrink if NOT sticky
+        if (!stickyData || stickyData[0] !== d[0]) {
+            d3.select(this).transition().duration(200)
+                .attr('transform', `translate(${xScale(Math.log10(getResolutionMass(d[1])))},${yScale(getYValue(d[1]))}) scale(1)`);
+        }
+
         if (stickyData) return;
         tooltip.classed('visible', false);
     })
     .on('click', function(event, d) {
         event.stopPropagation();
+        const prevStickyData = stickyData;
+
         if (stickyData && stickyData[0] === d[0]) {
             // Click same point — unstick
             stickyData = null;
             tooltip.classed('visible', false).classed('sticky', false)
                 .style('pointer-events', 'none');
+            
+            // If mouse is still over, keep 1.5, otherwise 1.0
+            // Since this is a click, mouse is over. But we can be safe:
+            d3.select(this).transition().duration(200)
+                .attr('transform', `translate(${xScale(Math.log10(getResolutionMass(d[1])))},${yScale(getYValue(d[1]))}) scale(1.5)`);
         } else {
             // Stick to this point (switch if another was already sticky)
             stickyData = d;
+            
+            // Unscale all points except the new sticky
+            allPoints.filter(p => !stickyData || p[0] !== stickyData[0])
+                .transition().duration(200)
+                .attr('transform', p => `translate(${xScale(Math.log10(getResolutionMass(p[1])))},${yScale(getYValue(p[1]))}) scale(1)`);
+
+            // Ensure this point is scaled up
+            d3.select(this).transition().duration(200)
+                .attr('transform', `translate(${xScale(Math.log10(getResolutionMass(d[1])))},${yScale(getYValue(d[1]))}) scale(1.5)`);
+
             tooltip.html(buildTooltipHTML(d, true))
                 .classed('visible', true)
                 .classed('sticky', true)
@@ -978,6 +1135,11 @@ function startAnimation() {
     function step() {
         currentMaxYear = Math.min(currentMaxYear + 1, YEAR_MAX);
         yearDisplayText.text(currentMaxYear);
+
+        // Play a sound for each sim that first appears this year, staggered slightly
+        const newSims = Object.values(simulations).filter(s => s.year === currentMaxYear);
+        newSims.forEach((sim, i) => setTimeout(() => playSimSound(sim), i * 50));
+
         updateYearUI();
         render();
         if (currentMaxYear >= YEAR_MAX) {
@@ -1019,6 +1181,30 @@ document.getElementById('year-stop').addEventListener('click', resetAnimation);
 
 document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #show-emojis, #filter-periodic, #filter-zoom, #filter-rt, #filter-hydro, #filter-dmo, #filter-mhd').forEach(cb => {
     cb.addEventListener('change', render);
+});
+
+// ── Sound controls ───────────────────────────────────────────────
+document.getElementById('play-sounds').addEventListener('change', e => {
+    document.getElementById('sound-controls').style.display = e.target.checked ? 'block' : 'none';
+});
+
+document.getElementById('sound-gain').addEventListener('input', e => {
+    soundGain = parseFloat(e.target.value);
+    document.getElementById('sound-gain-value').textContent = soundGain.toFixed(2);
+    playSimSound({ size: 100, m_g: 1e6 }); // preview
+});
+
+document.getElementById('sound-pitch').addEventListener('input', e => {
+    soundPitchShift = parseFloat(e.target.value);
+    const sign = soundPitchShift > 0 ? '+' : '';
+    document.getElementById('sound-pitch-value').textContent = `${sign}${soundPitchShift} oct`;
+    playSimSound({ size: 100, m_g: 1e6 }); // preview
+});
+
+document.getElementById('sound-tail').addEventListener('input', e => {
+    soundTailScale = parseFloat(e.target.value);
+    document.getElementById('sound-tail-value').textContent = soundTailScale.toFixed(1) + '×';
+    playSimSound({ size: 100, m_g: 1e6 }); // preview
 });
 
 // Dismiss sticky tooltip when clicking chart background
