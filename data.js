@@ -94,7 +94,6 @@ const simulationFamilies = {
         // and h≈0.7 for later runs. Box sizes similarly converted from h^-1 Mpc.
         // Values sourced from Gemini summary — verify against original papers before citing.
         'Cen+Ostriker-1992':  {size: 10/0.5,   m_g: 1.21e6/0.5,  'radiative-transfer': false, complete: true, redshift_end: 2.75, periodic: true, year: 1992, ads: 'https://ui.adsabs.harvard.edu/abs/1992ApJ...393...22C'},
-        'Scaramella-1993':    {size: 150/0.7,   m_g: 2.0e11/0.7,  'radiative-transfer': false, complete: true, redshift_end: 0.0,  periodic: true, year: 1993, ads: 'https://ui.adsabs.harvard.edu/abs/1993ApJ...409..487S'},
         'Katz-1996':          {size: 22.2/0.7,  m_g: 3.9e8/0.7,   'radiative-transfer': false, complete: true, redshift_end: 0.0,  periodic: true, year: 1996, ads: 'https://ui.adsabs.harvard.edu/abs/1996ApJS..105...19K'},
         'Hernquist-1996':     {size: 11.1/0.5,  m_g: 5.3e6/0.5,   'radiative-transfer': false, complete: true, redshift_end: 2.0,  periodic: true, year: 1996, ads: 'https://ui.adsabs.harvard.edu/abs/1996ApJ...457L..51H'},
         'Cen+Ostriker-1999':  {size: 100/0.7,   m_g: 2.3e9/0.7,   'radiative-transfer': false, complete: true, redshift_end: 0.0,  periodic: true, year: 1999, ads: 'https://ui.adsabs.harvard.edu/abs/1999ApJ...514....1C'},
