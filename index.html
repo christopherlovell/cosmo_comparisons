@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-7T56VPDB0Z"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-7T56VPDB0Z');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cosmo Carta</title>
@@ -140,9 +149,9 @@
                         </div>
                         <div class="slider-group" style="margin-top: 10px;">
                             <label class="slider-label">
-                                Speed: <span id="anim-speed-value">0.4s / yr</span>
+                                Speed: <span id="anim-speed-value">0.8s / yr</span>
                             </label>
-                            <input type="range" id="anim-speed" min="100" max="2000" step="100" value="400">
+                            <input type="range" id="anim-speed" min="100" max="2000" step="100" value="800">
                         </div>
                     </div>
                 </div>
@@ -173,6 +182,10 @@
                             <label class="checkbox-item">
                                 <input type="checkbox" id="show-code-emojis">
                                 <span>Show Code Emojis</span>
+                            </label>
+                            <label class="checkbox-item">
+                                <input type="checkbox" id="show-effective-volume">
+                                <span>Show Effective Volume</span>
                             </label>
                             <label class="checkbox-item">
                                 <input type="checkbox" id="dark-chart">

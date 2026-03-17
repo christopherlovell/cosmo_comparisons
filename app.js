@@ -129,6 +129,9 @@ const particleGroup = g.append('g').attr('class', 'particle-lines');
 // Survey lines group
 const surveyGroup = g.append('g').attr('class', 'surveys');
 
+// Effective volume lines group (rendered behind points)
+const effVolGroup = g.append('g').attr('class', 'effective-volume-lines');
+
 // Simulations group
 const simGroup = g.append('g').attr('class', 'simulations');
 
@@ -153,6 +156,7 @@ let dragState = null;
 // Clip data groups to plot area
 particleGroup.attr('clip-path', 'url(#plot-clip)');
 surveyGroup.attr('clip-path', 'url(#plot-clip)');
+effVolGroup.attr('clip-path', 'url(#plot-clip)');
 simGroup.attr('clip-path', 'url(#plot-clip)');
 
 // Transparent background rect (first child of g) — catches drag + dblclick on empty space
@@ -535,8 +539,12 @@ function renderParticleLines() {
             // exits through top edge — label just below
             label.attr('x', lx).attr('y', ly + 11).attr('text-anchor', 'middle');
         }
-        label.append('tspan').text('10');
-        label.append('tspan').attr('baseline-shift', 'super').attr('font-size', '8px').text(logN);
+        label.text('10');
+        label.append('tspan')
+            .attr('dx', 1)
+            .attr('dy', '-0.45em')
+            .attr('font-size', '0.8em')
+            .text(logN);
     }
 }
 
@@ -560,6 +568,7 @@ function render() {
     const showIconKey = document.getElementById('show-icon-key').checked;
     const showEmojis = document.getElementById('show-emojis').checked;
     const showCodeEmojis = document.getElementById('show-code-emojis').checked;
+    const showEffectiveVolume = document.getElementById('show-effective-volume').checked;
 
     const activeEmoji = name => {
         if (showCodeEmojis) { const ce = getCodeEmoji(name); if (ce) return ce; }
@@ -618,7 +627,7 @@ function render() {
 
     // Render surveys
     surveyGroup.selectAll('*').remove();
-    
+
     if (showSurveys && currentYMode !== 'volume') {
         const z = currentYMode === 'area_z5' ? 5 : 7;
         const [yMin, yMax] = yScale.domain();
@@ -652,6 +661,52 @@ function render() {
         });
     }
 
+    // Render effective volume lines
+    effVolGroup.selectAll('*').remove();
+
+    if (showEffectiveVolume) {
+        const effVolSims = filteredSims.filter(([, sim]) => sim.effective_volume != null);
+        effVolSims.forEach(([name, sim]) => {
+            const x = xScale(Math.log10(getResolutionMass(sim)));
+            const ySizeVol = Math.pow(sim.size, 3);
+            const yEffVol = Math.pow(sim.effective_volume, 3);
+
+            let y1, y2;
+            if (currentYMode === 'volume') {
+                y1 = yScale(Math.log10(ySizeVol));
+                y2 = yScale(Math.log10(yEffVol));
+            } else {
+                y1 = yScale(Math.log10(volumeToArea(ySizeVol, currentRedshift, currentDeltaZ)));
+                y2 = yScale(Math.log10(volumeToArea(yEffVol, currentRedshift, currentDeltaZ)));
+            }
+
+            const color = simColor(sim);
+
+            // Line connecting the two volumes
+            effVolGroup.append('line')
+                .attr('x1', x).attr('y1', y1)
+                .attr('x2', x).attr('y2', y2)
+                .attr('stroke', color)
+                .attr('stroke-width', 2)
+                .attr('stroke-dasharray', '4,3')
+                .attr('opacity', 0.7);
+
+            // Endpoint at effective volume
+            effVolGroup.append('circle')
+                .attr('cx', x).attr('cy', y2)
+                .attr('r', 4)
+                .attr('fill', color)
+                .attr('opacity', 0.7);
+
+            // Small dot at the size end (the main point is already there)
+            effVolGroup.append('circle')
+                .attr('cx', x).attr('cy', y1)
+                .attr('r', 3)
+                .attr('fill', color)
+                .attr('opacity', 0.5);
+        });
+    }
+
     // Render simulations
     const points = simGroup.selectAll('.sim-point')
         .data(filteredSims, d => d[0]);
@@ -673,6 +728,14 @@ function render() {
             const y = yScale(getYValue(d[1]));
             return `translate(${x},${y}) scale(0)`;
         });
+
+    // Invisible hit area – large enough to cover the 1.5× scaled state
+    // so the pointer never "leaves" during the growth animation
+    pointsEnter.append('circle')
+        .attr('class', 'hit-area')
+        .attr('r', 20)
+        .attr('fill', 'transparent')
+        .attr('stroke', 'none');
 
     pointsEnter.append('circle')
         .attr('class', 'suite-ring')
@@ -812,7 +875,7 @@ function render() {
         })
         .style('filter', d => {
             const e = activeEmoji(d[0]);
-            return (e && isPng(e) && isDarkMode && e === getCodeEmoji(d[0])) ? 'invert(1)' : null;
+            return (e && isPng(e) && isDarkMode && e === getCodeEmoji(d[0]) && e !== 'gizmo.png') ? 'invert(1)' : null;
         });
 
     allPoints.select('.point-label')
@@ -868,7 +931,7 @@ function render() {
         });
     }
 
-    allPoints.on('mouseover', function(event, d) {
+    allPoints.on('mouseenter', function(event, d) {
         playSimSound(d[1]);
         
         // Growth animation
@@ -881,7 +944,7 @@ function render() {
             .style('pointer-events', 'none');
         positionTooltip(event);
     })
-    .on('mouseout', function(event, d) {
+    .on('mouseleave', function(event, d) {
         // Only shrink if NOT sticky
         if (!stickyData || stickyData[0] !== d[0]) {
             d3.select(this).transition().duration(200)
@@ -1328,7 +1391,11 @@ document.getElementById('year-max').addEventListener('input', e => {
     render();
 });
 
-let animStepMs = 400;
+let animStepMs = 800;
+
+function formatAnimSpeedLabel(stepMs) {
+    return (stepMs / 1000).toFixed(1) + 's / yr';
+}
 
 function startAnimation() {
     if (!isAnimating) {
@@ -1391,10 +1458,10 @@ document.getElementById('year-stop').addEventListener('click', resetAnimation);
 
 document.getElementById('anim-speed').addEventListener('input', e => {
     animStepMs = parseInt(e.target.value);
-    document.getElementById('anim-speed-value').textContent = (animStepMs / 1000).toFixed(1) + 's / yr';
+    document.getElementById('anim-speed-value').textContent = formatAnimSpeedLabel(animStepMs);
 });
 
-document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #show-emojis, #show-code-emojis, #filter-periodic, #filter-zoom, #filter-rt, #filter-hydro, #filter-dmo, #filter-mhd').forEach(cb => {
+document.querySelectorAll('#show-surveys, #show-legend, #show-icon-key, #show-emojis, #show-code-emojis, #show-effective-volume, #filter-periodic, #filter-zoom, #filter-rt, #filter-hydro, #filter-dmo, #filter-mhd').forEach(cb => {
     cb.addEventListener('change', render);
 });
 
@@ -1655,9 +1722,9 @@ document.getElementById('reset-all').addEventListener('click', () => {
     resetAnimation();
 
     // Animation speed
-    animStepMs = 400;
-    document.getElementById('anim-speed').value = 400;
-    document.getElementById('anim-speed-value').textContent = '0.4s / yr';
+    animStepMs = 800;
+    document.getElementById('anim-speed').value = 800;
+    document.getElementById('anim-speed-value').textContent = formatAnimSpeedLabel(animStepMs);
 
     // Y-axis back to volume
     document.querySelector('input[name="yaxis"][value="volume"]').checked = true;
@@ -1686,6 +1753,7 @@ document.getElementById('reset-all').addEventListener('click', () => {
     document.getElementById('show-icon-key').checked = true;
     document.getElementById('show-emojis').checked = false;
     document.getElementById('show-code-emojis').checked = false;
+    document.getElementById('show-effective-volume').checked = false;
     document.getElementById('dark-chart').checked = false;
     document.querySelector('.chart-container').classList.add('dark');
 
